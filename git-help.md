@@ -12,6 +12,8 @@ git clone https://github.com/supermepsipax/med-eng-signal-project.git
 
 ```bash
 git branch <branch-name>
+
+
 ```
 
 ## Switching Branches
@@ -20,7 +22,7 @@ git branch <branch-name>
 ```bash
 git checkout <branch-name>
 ```
-You can also see which branch you are on using 
+You can also see which branch you are on using, you'll see a message
 ```bash
 git status
 ```
@@ -71,6 +73,33 @@ git pull
 
 This keeps your local code up-to-date with what others have pushed.
 
+## Storing credentials
+
+If you run into problems with logging in you will need to make an access token, go to your github account, click on your user icon, go to setting - developer settings - personal access tokens - generate new token (classic). Create a new token and set it to an expiry date that is longer than the class. It will display the token only once so make sure you save it somewhere securely. 
+
+Before you try doing an operation setup you name and email like this.
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+```
+And then after that configure your credential storing according to your system below.
+
+# On Windows
+```bash
+git config --global credential.helper wincred
+```
+# On macOS
+```bash
+git config --global credential.helper osxkeychain
+```
+
+# On Linux
+```bash
+git config --global credential.helper store
+```
+Once this is done, when you are prompted for you username and password, enter your actual github username but don't use your password, use the access token you generated and saved previously. This credential should be stored so you don't have to enter it again.
+
 ## Creating a Merge Request (Pull Request)
 **What it does:** Asks to merge your branch into the main branch, allowing others to review your code first.
 
@@ -84,6 +113,7 @@ This is typically done through the web interface (GitHub, GitLab, etc.):
 6. Submit the request for review
 
 Once approved, your changes will be merged into the main branch.
+
 
 ## Common Workflow Summary
 ```bash
