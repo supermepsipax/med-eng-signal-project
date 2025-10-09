@@ -1,15 +1,15 @@
 # -- Project Configuration --
+import os
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
 CURRENT_ITERATION = 1
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = True
+USE_CACHE = False  # Temporarily disabled for testing with real data
 
 # -- File Paths --
-import os
-DATA_DIR = '../data/'
+DATA_DIR = 'data/'
 TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
