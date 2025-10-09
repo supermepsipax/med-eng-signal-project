@@ -3,9 +3,11 @@
 from .data_loader import (
     load_training_data,
     load_holdout_data,
-    read_edf,
+    load_all_training_data
+)
+from .xml_parser import (
     parse_xml_annotations,
-    create_30_second_epochs
+    create_epoch_labels
 )
 
 from .preprocessing import (
@@ -43,9 +45,10 @@ __all__ = [
     # data_loader
     'load_training_data',
     'load_holdout_data',
-    'read_edf',
+    'load_all_training_data',
+    # xml parser
     'parse_xml_annotations',
-    'create_30_second_epochs',
+    'create_epoch_labels',
     # preprocessing
     'preprocess',
     'lowpass_filter',
