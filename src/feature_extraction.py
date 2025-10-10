@@ -1,4 +1,5 @@
 import numpy as np
+import scipy
 
 def extract_time_domain_features(epoch):
     """
@@ -16,32 +17,26 @@ def extract_time_domain_features(epoch):
     Returns:
         dict: A dictionary of features.
     """
-    # EXAMPLE: Only 3 basic features - students must add 13+ more
+    # TODO: Current feature set for time-domain only, need to implement more features
     features = {
         'mean': np.mean(epoch),
         'median': np.median(epoch),
         'std': np.std(epoch),
+        'variance': np.var(epoch),
+        'rms': np.sqrt(np.mean(epoch**2)),
+        'min': np.min(epoch),
+        'max': np.max(epoch),
+        'range': np.max(epoch) - np.min(epoch),
+        'skewness': scipy.stats.skew(epoch),
+        'kurtosis': scipy.stats.kurtosis(epoch),
+        'zero_crossings': np.sum(np.diff(np.sign(epoch)) != 0),
+        'hjorth_activity': np.var(epoch),
+        'hjorth_mobility': np.sqrt(np.var(np.diff(epoch)) / np.var(epoch)),
+        # This looks horrible but the formula is mobility(y')/mobility(y)
+        'hjorth_complexity': (np.sqrt(np.var(np.diff(epoch, 2)) / np.var(np.diff(epoch))))/(np.sqrt(np.var(np.diff(epoch)) / np.var(epoch))),
+        'total_energy': np.sum(epoch**2),
+        'mean_power': np.mean(epoch**2),
     }
-
-    # TODO: Students must implement remaining time-domain features:
-    # Basic statistical features:
-    # features['variance'] = np.var(epoch)
-    # features['rms'] = np.sqrt(np.mean(epoch**2))
-    # features['min'] = np.min(epoch)
-    # features['max'] = np.max(epoch)
-    # features['range'] = np.max(epoch) - np.min(epoch)
-    # features['skewness'] = scipy.stats.skew(epoch)
-    # features['kurtosis'] = scipy.stats.kurtosis(epoch)
-
-    # Signal complexity features:
-    # features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
-    # features['hjorth_activity'] = np.var(epoch)
-    # features['hjorth_mobility'] = np.sqrt(np.var(np.diff(epoch)) / np.var(epoch))
-    # features['hjorth_complexity'] = hjorth_complexity(epoch)
-
-    # Signal energy and power:
-    # features['total_energy'] = np.sum(epoch**2)
-    # features['mean_power'] = np.mean(epoch**2)
 
     return features
 
@@ -114,7 +109,6 @@ def extract_multi_channel_features(multi_channel_data, config):
     if config.CURRENT_ITERATION == 1:
         expected = 2 * 3  # 2 EEG channels × 3 features each
         print(f"Multi-channel Iteration 1: {features.shape[1]} features (target: {expected}+)")
-        print("Students must implement remaining 13 time-domain features per EEG channel!")
     elif config.CURRENT_ITERATION >= 3:
         print(f"Multi-channel features extracted: {features.shape[1]} total")
         print("(2 EEG + 2 EOG + 1 EMG channels)")

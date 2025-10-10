@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score
 import pandas as pd
@@ -13,8 +13,8 @@ def train_classifier(features, labels, config):
 
     This function provides a basic framework but students should enhance it:
 
-    1. Implement proper cross-validation (not just train/test split)
-    2. Address class imbalance in sleep stage data
+    1. DONE: Implement proper cross-validation (not just train/test split)
+    2. DONE: (use StratifiedKFold) Address class imbalance in sleep stage data
     3. Tune hyperparameters for each classifier
     4. Add more sophisticated evaluation metrics
     5. Consider ensemble methods in later iterations
@@ -34,81 +34,113 @@ def train_classifier(features, labels, config):
     if features.shape[0] == 0 or features.shape[1] == 0:
         raise ValueError("No features available for training!")
 
-    # BASIC train/test split - students should implement cross-validation
-    # TODO: Students should implement k-fold cross-validation for more robust evaluation
-    # Use stratified split for realistic sleep data distribution
-    # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-    try:
-        X_train, X_test, y_train, y_test = train_test_split(
-            features, labels, test_size=0.2, random_state=42, stratify=labels
-        )
-        print("Using stratified train/test split to maintain class balance")
-    except ValueError as e:
-        # Fallback for edge cases (very small datasets)
-        X_train, X_test, y_train, y_test = train_test_split(
-            features, labels, test_size=0.2, random_state=42
-        )
-        print(f"Using non-stratified split: {e}")
-    print(f"Training set: {X_train.shape[0]} samples, Test set: {X_test.shape[0]} samples")
+    # NOTE: Used k fold stratified to address class imbalance in sleep data:
 
-    # TODO: Students should address class imbalance in sleep data:
-    # - Sleep stages are not equally distributed
-    # - Consider SMOTE, class weights, or other techniques
-    # from imblearn.over_sampling import SMOTE
-    # smote = SMOTE(random_state=42)
-    # X_train, y_train = smote.fit_resample(X_train, y_train)
+    # Helper function to create model based on iteration
+    def create_model():
+        """Create a fresh model instance based on current iteration."""
+        if config.CURRENT_ITERATION == 1:
+            # Iteration 1: Simple k-NN
+            model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+            return model, f"k-NN with k={config.KNN_N_NEIGHBORS}"
 
-    # Select classifier based on iteration (using config parameters)
-    if config.CURRENT_ITERATION == 1:
-        # Iteration 1: Simple k-NN
-        model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
-        print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
+        elif config.CURRENT_ITERATION == 2:
+            # Iteration 2: SVM
+            # TODO: Students should tune hyperparameters (C, kernel, gamma)
+            model = SVC(
+                C=getattr(config, 'SVM_C', 1.0),
+                kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
+                random_state=42
+            )
+            return model, f"SVM with C={model.C}, kernel={model.kernel}"
 
-    elif config.CURRENT_ITERATION == 2:
-        # Iteration 2: SVM
-        # TODO: Students should tune hyperparameters (C, kernel, gamma)
-        model = SVC(
-            C=getattr(config, 'SVM_C', 1.0),
-            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
-            random_state=42
-        )
-        print(f"Using SVM with C={model.C}, kernel={model.kernel}")
+        elif config.CURRENT_ITERATION >= 3:
+            # Iteration 3+: Random Forest
+            # TODO: Students should tune hyperparameters (n_estimators, max_depth, etc.)
+            model = RandomForestClassifier(
+                n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
+                max_depth=getattr(config, 'RF_MAX_DEPTH', None),
+                min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
+                random_state=42,
+                n_jobs=-1  # Use all available cores
+            )
+            return model, f"Random Forest with {model.n_estimators} trees"
 
-    elif config.CURRENT_ITERATION >= 3:
-        # Iteration 3+: Random Forest
-        # TODO: Students should tune hyperparameters (n_estimators, max_depth, etc.)
-        model = RandomForestClassifier(
-            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
-            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
-            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
-            random_state=42,
-            n_jobs=-1  # Use all available cores
-        )
-        print(f"Using Random Forest with {model.n_estimators} trees")
+        else:
+            raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
 
-    else:
-        raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
+    # Create initial model to display info
+    _, model_description = create_model()
+    print(f"Using {model_description}")
 
-    # Train the model
-    print("Training model...")
-    model.fit(X_train, y_train)
+    # K-Fold Cross-Validation
+    n_folds = config.CV_FOLDS
+    print(f"\nPerforming {n_folds}-fold stratified cross-validation...")
+    print("(Stratified to maintain class balance in each fold)")
 
-    # Comprehensive evaluation with detailed performance metrics
-    y_pred = model.predict(X_test)
-    overall_accuracy = accuracy_score(y_test, y_pred)
-    print(f"Overall accuracy: {overall_accuracy:.3f}")
+    cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
 
-    # Calculate and display detailed performance metrics
-    print_performance_metrics(y_test, y_pred)
+    fold_accuracies = []
+    fold_f1_scores = []
+    fold_predictions = []
+    fold_true_labels = []
+
+    print("\nCross-Validation Results:")
+    print("-" * 50)
+
+    for fold_idx, (train_idx, test_idx) in enumerate(cv.split(features, labels), 1):
+        X_train_fold = features[train_idx]
+        X_test_fold = features[test_idx]
+        y_train_fold = labels[train_idx]
+        y_test_fold = labels[test_idx]
+
+        model_fold, _ = create_model()
+
+        model_fold.fit(X_train_fold, y_train_fold)
+
+        y_pred_fold = model_fold.predict(X_test_fold)
+        fold_acc = accuracy_score(y_test_fold, y_pred_fold)
+        fold_f1 = f1_score(y_test_fold, y_pred_fold, average='macro', zero_division=0)
+
+        fold_accuracies.append(fold_acc)
+        fold_f1_scores.append(fold_f1)
+        fold_predictions.extend(y_pred_fold)
+        fold_true_labels.extend(y_test_fold)
+
+        print(f"Fold {fold_idx}/{n_folds}: Accuracy={fold_acc:.3f}, Macro F1={fold_f1:.3f}")
+
+    print("-" * 50)
+
+    # Display cross-validation summary statistics
+    mean_accuracy = np.mean(fold_accuracies)
+    std_accuracy = np.std(fold_accuracies)
+    mean_f1 = np.mean(fold_f1_scores)
+    std_f1 = np.std(fold_f1_scores)
+
+    print(f"\nCross-Validation Summary:")
+    print(f"Mean Accuracy: {mean_accuracy:.3f} (+/- {std_accuracy:.3f})")
+    print(f"Mean Macro F1-Score: {mean_f1:.3f} (+/- {std_f1:.3f})")
+    print(f"Accuracy Range: [{min(fold_accuracies):.3f}, {max(fold_accuracies):.3f}]")
+
+    # Display comprehensive performance metrics across all folds
+    print("\nComprehensive Performance Metrics (Across All CV Folds):")
+    print_performance_metrics(np.array(fold_true_labels), np.array(fold_predictions))
+
+    # Train final model on ALL data for deployment/prediction
+    print("\n" + "="*70)
+    print("Training final model on all available data...")
+    print("="*70)
+    final_model, _ = create_model()
+    final_model.fit(features, labels)
+    print("Final model training complete!")
 
     # TODO: Students should add more advanced metrics:
     # - Cohen's kappa (important for sleep scoring)
     # - ROC-AUC for each class
-    # - Cross-validation scores
     # - Feature importance analysis
     print("\nTODO: Students should add Cohen's kappa and ROC-AUC metrics")
 
-    return model
+    return final_model
 
 
 def print_performance_metrics(y_true, y_pred):
