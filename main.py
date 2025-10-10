@@ -10,6 +10,8 @@ from src.utils import save_cache, load_cache
 import os
 import sys
 import io
+import numpy as np
+from glob import glob
 
 
 def main():
@@ -27,28 +29,73 @@ def main():
     print(f"--- Sleep Scoring Pipeline - Iteration {config.CURRENT_ITERATION} ---")
 
     # 1. Load Data
-    # Example uses R1.edf and R1.xml from training directory
+    # Load ALL available data files from training directory
     print("\n=== STEP 1: DATA LOADING ===")
-    edf_file = os.path.join(config.TRAINING_DIR, "R1.edf")  # Example EDF file
-    xml_file = os.path.join(config.TRAINING_DIR, "R1.xml")  # Corresponding annotation file
 
-    # Handle both new multi-channel format and old single-channel format for compatibility
-    try:
-        multi_channel_data, labels, channel_info = load_training_data(edf_file, xml_file)
-        print(f"Multi-channel data loaded:")
-        print(f"  EEG: {multi_channel_data['eeg'].shape}")
-        print(f"  EOG: {multi_channel_data['eog'].shape}")
-        print(f"  EMG: {multi_channel_data['emg'].shape}")
-        print(f"Labels shape: {labels.shape}")
+    # Find all .edf files in the training directory
+    edf_files = sorted(glob(os.path.join(config.TRAINING_DIR, "*.edf")))
 
-        # For pipeline compatibility, use EEG data as primary signal
-        eeg_data = multi_channel_data['eeg'][:, 0, :]  # Use first EEG channel for now
-        print(f"Using EEG channel 1 for pipeline: {eeg_data.shape}")
+    if len(edf_files) == 0:
+        raise FileNotFoundError(f"No .edf files found in {config.TRAINING_DIR}")
 
-    except (ValueError, TypeError):
-        # Fallback to old format if multi-channel not implemented
-        eeg_data, labels = load_training_data(edf_file, xml_file)
-        print(f"Single-channel data loaded: {eeg_data.shape}, Labels: {labels.shape}")
+    print(f"Found {len(edf_files)} data files to load")
+
+    # Lists to store data from all files
+    all_eeg_data = []
+    all_labels = []
+
+    # Load each file pair (EDF + XML)
+    for edf_file in edf_files:
+        # Get corresponding XML file
+        base_name = os.path.splitext(os.path.basename(edf_file))[0]
+        xml_file = os.path.join(config.TRAINING_DIR, f"{base_name}.xml")
+
+        if not os.path.exists(xml_file):
+            print(f"⚠️  WARNING: No annotation file found for {base_name}.edf, skipping...")
+            continue
+
+        print(f"\nLoading {base_name}...")
+
+        # Handle both new multi-channel format and old single-channel format for compatibility
+        try:
+            multi_channel_data, labels, channel_info = load_training_data(edf_file, xml_file)
+            print(f"  Multi-channel data loaded:")
+            print(f"    EEG: {multi_channel_data['eeg'].shape}")
+            print(f"    EOG: {multi_channel_data['eog'].shape}")
+            print(f"    EMG: {multi_channel_data['emg'].shape}")
+            print(f"  Labels: {labels.shape}")
+
+            # For pipeline compatibility, use EEG data as primary signal
+            eeg_data_file = multi_channel_data['eeg'][:, 0, :]  # Use first EEG channel for now
+            print(f"  Using EEG channel 1: {eeg_data_file.shape}")
+
+        except (ValueError, TypeError):
+            # Fallback to old format if multi-channel not implemented
+            eeg_data_file, labels = load_training_data(edf_file, xml_file)
+            print(f"  Single-channel data loaded: {eeg_data_file.shape}, Labels: {labels.shape}")
+
+        # Append to lists
+        all_eeg_data.append(eeg_data_file)
+        all_labels.append(labels)
+
+    # Concatenate all data
+    print(f"\n--- Concatenating data from {len(all_eeg_data)} files ---")
+    eeg_data = np.concatenate(all_eeg_data, axis=0)
+    labels = np.concatenate(all_labels, axis=0)
+
+    print(f"Combined dataset:")
+    print(f"  EEG data shape: {eeg_data.shape}")
+    print(f"  Labels shape: {labels.shape}")
+    print(f"  Total epochs: {eeg_data.shape[0]}")
+
+    # Display class distribution
+    unique_labels, label_counts = np.unique(labels, return_counts=True)
+    print(f"\nClass distribution across all files:")
+    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    for label, count in zip(unique_labels, label_counts):
+        if label < len(stage_names):
+            percentage = count / len(labels) * 100
+            print(f"  {stage_names[label]}: {count} epochs ({percentage:.1f}%)")
 
     # 2. Preprocessing
     print("\n=== STEP 2: PREPROCESSING ===")

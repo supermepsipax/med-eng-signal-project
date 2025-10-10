@@ -29,6 +29,9 @@ LOW_PASS_FILTER_FREQ = 40  # Hz
 # (Add feature-specific parameters here)
 
 # -- Classification --
+# Cross-validation settings
+CV_FOLDS = 5  # Number of folds for k-fold cross-validation
+
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1:
     # Iteration 1: Basic pipeline with k-NN
