@@ -288,16 +288,17 @@ Performing 5-fold stratified cross-validation...
 
 Cross-Validation Results:
 --------------------------------------------------
-Fold 1/5: Accuracy=0.606, Macro F1=0.419
-Fold 2/5: Accuracy=0.606, Macro F1=0.425
-Fold 3/5: Accuracy=0.606, Macro F1=0.427
-Fold 4/5: Accuracy=0.617, Macro F1=0.432
-Fold 5/5: Accuracy=0.612, Macro F1=0.423
+Fold 1/5: Accuracy=0.606, Macro F1=0.419, Kappa=0.426
+Fold 2/5: Accuracy=0.606, Macro F1=0.425, Kappa=0.428
+Fold 3/5: Accuracy=0.606, Macro F1=0.427, Kappa=0.428
+Fold 4/5: Accuracy=0.617, Macro F1=0.432, Kappa=0.443
+Fold 5/5: Accuracy=0.612, Macro F1=0.423, Kappa=0.435
 --------------------------------------------------
 
 Cross-Validation Summary:
 Mean Accuracy: 0.609 (+/- 0.004)
 Mean Macro F1-Score: 0.425 (+/- 0.004)
+Mean Cohen's Kappa: 0.432 (+/- 0.006)
 Accuracy Range: [0.606, 0.617]
 
 Comprehensive Performance Metrics (Across All CV Folds):
@@ -343,11 +344,56 @@ Notes for Sleep Scoring:
 - Clinical focus: High sensitivity for REM and N3 stages
 
 ======================================================================
+ADVANCED METRICS ANALYSIS
+======================================================================
+
+======================================================================
+ADVANCED PERFORMANCE METRICS
+======================================================================
+
+1. Cohen's Kappa (Inter-Rater Agreement)
+----------------------------------------------------------------------
+   Kappa Score: 0.4322
+   Interpretation: Moderate agreement
+   Note: Kappa accounts for chance agreement, making it more
+         reliable than accuracy for imbalanced datasets.
+
+2. ROC-AUC Scores (One-vs-Rest)
+----------------------------------------------------------------------
+   Per-Class AUC Scores:
+      Wake    : 0.8574
+      N1      : 0.5237
+      N2      : 0.7439
+      N3      : 0.8966
+      REM     : 0.6366
+
+   Macro-Averaged AUC:    0.7316
+   Weighted-Averaged AUC: 0.7886
+   Note: AUC > 0.5 indicates better than random classification.
+         AUC = 1.0 indicates perfect classification.
+
+3. Feature Importance Analysis
+----------------------------------------------------------------------
+   ⚠️  Not available for k-NN classifier (Iteration 1).
+   Note: Feature importance will be available in Iteration 3+
+         when using Random Forest classifier.
+   Alternative: Consider using:
+      - Permutation importance (sklearn.inspection.permutation_importance)
+      - Univariate feature selection scores
+
+======================================================================
+
+Generating ROC curves...
+✓ ROC curves saved to: roc_curves_cv.png
+
+Generating feature importance plot...
+ℹ️  Feature importance not available for k-NN (Iteration 1)
+   This will be available in Iteration 3+ with Random Forest
+
+======================================================================
 Training final model on all available data...
 ======================================================================
 Final model training complete!
-
-TODO: Students should add Cohen's kappa and ROC-AUC metrics
 Trained knn classifier
 
 === STEP 6: VISUALIZATION ===
