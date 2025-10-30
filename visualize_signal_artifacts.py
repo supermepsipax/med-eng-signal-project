@@ -26,6 +26,7 @@ import os
 from glob import glob
 import config
 from src.data_loader import load_training_data
+from src.preprocessing import lowpass_filter, highpass_filter, notch_filter, bandpass_filter
 
 
 def compute_spectrum(data, fs):
@@ -47,27 +48,49 @@ def compute_spectrum(data, fs):
     return xf, magnitude
 
 
-def apply_basic_filter(data, cutoff, fs, order=5):
-    """Apply a basic low-pass filter for comparison."""
-    nyquist = 0.5 * fs
-    normal_cutoff = cutoff / nyquist
-    b, a = signal.butter(order, normal_cutoff, btype='low', analog=False)
-    filtered = signal.lfilter(b, a, data)
+def apply_filter_pipeline(data, fs, channel_type='eeg'):
+    """
+    Apply appropriate filtering pipeline based on channel type.
+    Uses the same filters as src/preprocessing.py
+
+    Args:
+        data (np.ndarray): 1D signal data
+        fs (float): Sampling frequency in Hz
+        channel_type (str): Type of channel ('eeg', 'eog', 'emg')
+
+    Returns:
+        np.ndarray: Filtered signal
+    """
+    if channel_type == 'eeg':
+        # Apply bandpass filter for EEG (0.5-40 Hz typical)
+        lowcut = config.EEG_BANDPASS_FILTER_FREQ[0] if hasattr(config, 'EEG_BANDPASS_FILTER_FREQ') else 0.5
+        highcut = config.EEG_BANDPASS_FILTER_FREQ[1] if hasattr(config, 'EEG_BANDPASS_FILTER_FREQ') else 40
+        filtered = bandpass_filter(data, lowcut, highcut, fs)
+    elif channel_type == 'eog':
+        # Apply lower cutoff for EOG (preserve slow eye movements)
+        filtered = lowpass_filter(data, 30, fs)
+    elif channel_type == 'emg':
+        # Apply higher cutoff for EMG (preserve muscle activity)
+        filtered = lowpass_filter(data, 70, fs)
+    else:
+        # Default to lowpass at 40 Hz
+        filtered = lowpass_filter(data, 40, fs)
+
     return filtered
 
 
 def visualize_signal_chunk(chunk_data, fs, channel_name, epoch_idx,
-                           cutoff_freq=40, show_seconds=30):
+                           channel_type='eeg', show_seconds=30):
     """
     Visualize a chunk of signal data with time domain, filtered version,
-    and frequency spectrum.
+    and frequency spectra for both raw and filtered signals.
 
     Args:
         chunk_data (np.ndarray): 1D signal data
         fs (float): Sampling frequency in Hz
         channel_name (str): Name of the channel
         epoch_idx (int): Epoch index
-        cutoff_freq (float): Low-pass filter cutoff frequency
+        channel_type (str): Type of channel ('eeg', 'eog', 'emg')
         show_seconds (float): Number of seconds to display (if less than full epoch)
     """
     # Limit display to first N seconds if specified
@@ -80,16 +103,30 @@ def visualize_signal_chunk(chunk_data, fs, channel_name, epoch_idx,
     # Create time array
     time = np.arange(len(display_data)) / fs
 
-    # Apply basic filter
-    filtered_data = apply_basic_filter(display_data, cutoff_freq, fs)
+    # Apply preprocessing filter pipeline
+    filtered_full = apply_filter_pipeline(chunk_data, fs, channel_type)
+    filtered_data = filtered_full[:len(display_data)]
 
     # Compute frequency spectrum (use full chunk for better frequency resolution)
-    freqs, magnitude = compute_spectrum(chunk_data, fs)
+    freqs, magnitude_raw = compute_spectrum(chunk_data, fs)
+    freqs_filtered, magnitude_filtered = compute_spectrum(filtered_full, fs)
 
     # Create figure with subplots
-    fig, axes = plt.subplots(3, 1, figsize=(14, 10))
+    fig, axes = plt.subplots(4, 1, figsize=(14, 13))
     fig.suptitle(f'{channel_name} - Epoch {epoch_idx} (First {show_seconds}s shown)',
                  fontsize=14, fontweight='bold')
+
+    # Get filter description based on channel type
+    if channel_type == 'eeg':
+        lowcut = config.EEG_BANDPASS_FILTER_FREQ[0] if hasattr(config, 'EEG_BANDPASS_FILTER_FREQ') else 0.5
+        highcut = config.EEG_BANDPASS_FILTER_FREQ[1] if hasattr(config, 'EEG_BANDPASS_FILTER_FREQ') else 40
+        filter_desc = f'Bandpass {lowcut}-{highcut} Hz'
+    elif channel_type == 'eog':
+        filter_desc = 'Low-pass 30 Hz'
+    elif channel_type == 'emg':
+        filter_desc = 'Low-pass 70 Hz'
+    else:
+        filter_desc = 'Low-pass 40 Hz'
 
     # Plot 1: Raw signal
     axes[0].plot(time, display_data, 'b-', linewidth=0.5, alpha=0.7)
@@ -101,18 +138,16 @@ def visualize_signal_chunk(chunk_data, fs, channel_name, epoch_idx,
     # Plot 2: Filtered signal
     axes[1].plot(time, filtered_data, 'g-', linewidth=0.5, alpha=0.7)
     axes[1].set_ylabel('Amplitude (µV)', fontsize=10)
-    axes[1].set_xlabel('Time (seconds)', fontsize=10)
-    axes[1].set_title(f'Filtered Signal (Low-pass {cutoff_freq} Hz)', fontsize=11)
+    axes[1].set_title(f'Filtered Signal ({filter_desc})', fontsize=11)
     axes[1].grid(True, alpha=0.3)
     axes[1].set_xlim([time[0], time[-1]])
 
-    # Plot 3: Frequency spectrum (0-100 Hz range for visibility)
+    # Plot 3: Raw signal frequency spectrum (0-100 Hz range for visibility)
     freq_limit = min(100, fs/2)
     freq_mask = freqs <= freq_limit
-    axes[2].plot(freqs[freq_mask], magnitude[freq_mask], 'r-', linewidth=1)
+    axes[2].plot(freqs[freq_mask], magnitude_raw[freq_mask], 'r-', linewidth=1)
     axes[2].set_ylabel('Magnitude', fontsize=10)
-    axes[2].set_xlabel('Frequency (Hz)', fontsize=10)
-    axes[2].set_title('Frequency Spectrum (0-100 Hz)', fontsize=11)
+    axes[2].set_title('Raw Signal - Frequency Spectrum (0-100 Hz)', fontsize=11)
     axes[2].grid(True, alpha=0.3)
 
     # Highlight powerline frequencies
@@ -120,12 +155,12 @@ def visualize_signal_chunk(chunk_data, fs, channel_name, epoch_idx,
     axes[2].axvline(60, color='purple', linestyle='--', alpha=0.5, label='60 Hz (US)')
     axes[2].legend(loc='upper right', fontsize=8)
 
-    # Find and annotate peaks in spectrum
-    peak_threshold = np.max(magnitude[freq_mask]) * 0.1  # 10% of max
-    peaks, _ = signal.find_peaks(magnitude[freq_mask], height=peak_threshold)
+    # Find and annotate peaks in raw spectrum
+    peak_threshold = np.max(magnitude_raw[freq_mask]) * 0.1  # 10% of max
+    peaks, _ = signal.find_peaks(magnitude_raw[freq_mask], height=peak_threshold)
     if len(peaks) > 0:
         peak_freqs = freqs[freq_mask][peaks]
-        peak_mags = magnitude[freq_mask][peaks]
+        peak_mags = magnitude_raw[freq_mask][peaks]
         # Show top 5 peaks
         top_peaks_idx = np.argsort(peak_mags)[-5:]
         for idx in top_peaks_idx:
@@ -134,6 +169,36 @@ def visualize_signal_chunk(chunk_data, fs, channel_name, epoch_idx,
                            xy=(peak_freqs[idx], peak_mags[idx]),
                            xytext=(5, 5), textcoords='offset points',
                            fontsize=8, color='red')
+
+    # Plot 4: Filtered signal frequency spectrum (0-100 Hz range for visibility)
+    freq_mask_filtered = freqs_filtered <= freq_limit
+    axes[3].plot(freqs_filtered[freq_mask_filtered], magnitude_filtered[freq_mask_filtered],
+                 'darkgreen', linewidth=1)
+    axes[3].set_ylabel('Magnitude', fontsize=10)
+    axes[3].set_xlabel('Frequency (Hz)', fontsize=10)
+    axes[3].set_title('Filtered Signal - Frequency Spectrum (0-100 Hz)', fontsize=11)
+    axes[3].grid(True, alpha=0.3)
+
+    # Highlight powerline frequencies
+    axes[3].axvline(50, color='orange', linestyle='--', alpha=0.5, label='50 Hz (EU)')
+    axes[3].axvline(60, color='purple', linestyle='--', alpha=0.5, label='60 Hz (US)')
+    axes[3].legend(loc='upper right', fontsize=8)
+
+    # Find and annotate peaks in filtered spectrum
+    peak_threshold_filtered = np.max(magnitude_filtered[freq_mask_filtered]) * 0.1  # 10% of max
+    peaks_filtered, _ = signal.find_peaks(magnitude_filtered[freq_mask_filtered],
+                                          height=peak_threshold_filtered)
+    if len(peaks_filtered) > 0:
+        peak_freqs_filtered = freqs_filtered[freq_mask_filtered][peaks_filtered]
+        peak_mags_filtered = magnitude_filtered[freq_mask_filtered][peaks_filtered]
+        # Show top 5 peaks
+        top_peaks_idx_filtered = np.argsort(peak_mags_filtered)[-5:]
+        for idx in top_peaks_idx_filtered:
+            axes[3].plot(peak_freqs_filtered[idx], peak_mags_filtered[idx], 'go', markersize=6)
+            axes[3].annotate(f'{peak_freqs_filtered[idx]:.1f} Hz',
+                           xy=(peak_freqs_filtered[idx], peak_mags_filtered[idx]),
+                           xytext=(5, 5), textcoords='offset points',
+                           fontsize=8, color='darkgreen')
 
     plt.tight_layout()
     return fig
@@ -215,23 +280,13 @@ def load_and_visualize_random_epochs(n_samples=5, data_dir=None, show_seconds=10
                       f"Mean={np.mean(epoch_data):.2f}, Std={np.std(epoch_data):.2f}, "
                       f"Range=[{np.min(epoch_data):.2f}, {np.max(epoch_data):.2f}]")
 
-                # Determine appropriate cutoff based on channel type
-                if channel_type == 'eeg':
-                    cutoff = 40  # Standard EEG cutoff
-                elif channel_type == 'eog':
-                    cutoff = 30  # Lower for EOG (preserve slow eye movements)
-                elif channel_type == 'emg':
-                    cutoff = 70  # Higher for EMG (preserve muscle activity)
-                else:
-                    cutoff = 40  # Default
-
                 # Create visualization
                 fig = visualize_signal_chunk(
                     epoch_data,
                     fs,
                     f"{ch_name} [{label_name}]",
                     epoch_idx,
-                    cutoff_freq=cutoff,
+                    channel_type=channel_type,
                     show_seconds=show_seconds
                 )
 

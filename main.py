@@ -1,5 +1,5 @@
 import config
-from src.data_loader import load_training_data
+from src.data_loader import load_all_training_data
 from src.preprocessing import preprocess
 from src.feature_extraction import extract_features
 from src.feature_selection import select_features
@@ -11,7 +11,6 @@ import os
 import sys
 import io
 import numpy as np
-from glob import glob
 
 
 def main():
@@ -32,70 +31,29 @@ def main():
     # Load ALL available data files from training directory
     print("\n=== STEP 1: DATA LOADING ===")
 
-    # Find all .edf files in the training directory
-    edf_files = sorted(glob(os.path.join(config.TRAINING_DIR, "*.edf")))
+    # Use the load_all_training_data function to load all recordings at once
+    multi_channel_data, labels, record_ids, channel_info = load_all_training_data(
+        config.TRAINING_DIR,
+        epoch_length=30
+    )
 
-    if len(edf_files) == 0:
-        raise FileNotFoundError(f"No .edf files found in {config.TRAINING_DIR}")
+    print("\nLoaded multi-channel data:")
+    if 'eeg' in multi_channel_data:
+        print(f"  EEG: {multi_channel_data['eeg'].shape}")
+    if 'eog' in multi_channel_data:
+        print(f"  EOG: {multi_channel_data['eog'].shape}")
+    if 'emg' in multi_channel_data:
+        print(f"  EMG: {multi_channel_data['emg'].shape}")
+    print(f"  Labels: {labels.shape}")
+    print(f"  Unique recordings: {len(np.unique(record_ids))}")
 
-    print(f"Found {len(edf_files)} data files to load")
-
-    # Lists to store data from all files
-    all_eeg_data = []
-    all_labels = []
-
-    # Load each file pair (EDF + XML)
-    for edf_file in edf_files:
-        # Get corresponding XML file
-        base_name = os.path.splitext(os.path.basename(edf_file))[0]
-        xml_file = os.path.join(config.TRAINING_DIR, f"{base_name}.xml")
-
-        if not os.path.exists(xml_file):
-            print(f"⚠️  WARNING: No annotation file found for {base_name}.edf, skipping...")
-            continue
-
-        print(f"\nLoading {base_name}...")
-
-        # Handle both new multi-channel format and old single-channel format for compatibility
-        try:
-            multi_channel_data, labels, channel_info = load_training_data(edf_file, xml_file)
-            print(f"  Multi-channel data loaded:")
-            print(f"    EEG: {multi_channel_data['eeg'].shape}")
-            print(f"    EOG: {multi_channel_data['eog'].shape}")
-            print(f"    EMG: {multi_channel_data['emg'].shape}")
-            print(f"  Labels: {labels.shape}")
-
-            # For pipeline compatibility, use EEG data as primary signal
-            eeg_data_file = multi_channel_data['eeg'][:, 0, :]  # Use first EEG channel for now
-            print(f"  Using EEG channel 1: {eeg_data_file.shape}")
-
-        except (ValueError, TypeError):
-            # Fallback to old format if multi-channel not implemented
-            eeg_data_file, labels = load_training_data(edf_file, xml_file)
-            print(f"  Single-channel data loaded: {eeg_data_file.shape}, Labels: {labels.shape}")
-
-        # Append to lists
-        all_eeg_data.append(eeg_data_file)
-        all_labels.append(labels)
-
-    # Concatenate all data
-    print(f"\n--- Concatenating data from {len(all_eeg_data)} files ---")
-    eeg_data = np.concatenate(all_eeg_data, axis=0)
-    labels = np.concatenate(all_labels, axis=0)
-
-    print(f"Combined dataset:")
-    print(f"  EEG data shape: {eeg_data.shape}")
-    print(f"  Labels shape: {labels.shape}")
-    print(f"  Total epochs: {eeg_data.shape[0]}")
-
-    # Display class distribution
-    unique_labels, label_counts = np.unique(labels, return_counts=True)
-    print(f"\nClass distribution across all files:")
-    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    for label, count in zip(unique_labels, label_counts):
-        if label < len(stage_names):
-            percentage = count / len(labels) * 100
-            print(f"  {stage_names[label]}: {count} epochs ({percentage:.1f}%)")
+    print("\nChannel information:")
+    if 'eeg_fs' in channel_info:
+        print(f"  EEG sampling rate: {channel_info['eeg_fs']} Hz")
+    if 'eog_fs' in channel_info:
+        print(f"  EOG sampling rate: {channel_info['eog_fs']} Hz")
+    if 'emg_fs' in channel_info:
+        print(f"  EMG sampling rate: {channel_info['emg_fs']} Hz")
 
     # 2. Preprocessing
     print("\n=== STEP 2: PREPROCESSING ===")
@@ -107,8 +65,14 @@ def main():
             print("Loaded preprocessed data from cache")
 
     if preprocessed_data is None:
-        preprocessed_data = preprocess(eeg_data, config)
-        print(f"Preprocessed data shape: {preprocessed_data.shape}")
+        preprocessed_data = preprocess(multi_channel_data, channel_info, config)
+        # Display preprocessed data info
+        if isinstance(preprocessed_data, dict):
+            print("Preprocessed multi-channel data:")
+            for signal_type in preprocessed_data.keys():
+                print(f"  {signal_type.upper()}: {preprocessed_data[signal_type].shape}")
+        else:
+            print("Preprocessed data shape: {preprocessed_data.shape}")
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
             print("Saved preprocessed data to cache")
@@ -164,6 +128,8 @@ def main():
      
     if model is not None:
         generate_report(model, selected_features, labels, config, processing_log)
+        model_filename = f"model_iter{config.CURRENT_ITERATION}.joblib"
+        save_cache(model, model_filename,config.CACHE_DIR )
     else:
         print("Skipping report - no trained model")
 
