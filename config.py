@@ -24,6 +24,7 @@ if not os.path.exists(CACHE_DIR):
 
 # -- Preprocessing --
 LOW_PASS_FILTER_FREQ = 40  # Hz
+EEG_BANDPASS_FILTER_FREQ = [0.5, 40]
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)

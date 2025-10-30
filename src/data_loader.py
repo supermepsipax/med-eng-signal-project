@@ -394,6 +394,100 @@ def load_all_training_data(training_dir, epoch_length=30):
 
     return combined_data, combined_labels, combined_record_ids, channel_info
 
+def load_all_holdout_data(holdout_dir, epoch_length=30):
+    """
+    Load all training recordings from a directory.
+
+    Args:
+        holdout_dir (str): Path to directory containing EDF and XML files
+        epoch_length (float): Epoch duration in seconds (default 30)
+
+    Returns:
+        tuple: (all_data, all_labels, all_record_ids, channel_info) where:
+            - all_data (dict): Combined multi-channel data from all recordings
+            - all_labels (np.ndarray): Concatenated labels
+            - all_record_ids (np.ndarray): Record ID for each epoch
+            - channel_info (dict): Channel information (same across recordings)
+
+    Example:
+        >>> data, labels, record_ids, info = load_all_training_data('data/training/')
+        >>> print(f"Total epochs: {len(labels)}")
+        >>> print(f"Unique recordings: {len(np.unique(record_ids))}")
+    """
+    from glob import glob
+
+    print(f"Loading all training data from {holdout_dir}...")
+
+    # Find all EDF files
+    edf_files = sorted(glob(os.path.join(holdout_dir, '*.edf')))
+
+    if not edf_files:
+        raise FileNotFoundError(f"No EDF files found in {holdout_dir}")
+
+    print(f"Found {len(edf_files)} recordings")
+
+    # Initialize lists to store data from all recordings
+    all_eeg = []
+    all_eog = []
+    all_emg = []
+    all_epoch_ids = []
+    all_record_ids = []
+    channel_info = None
+
+    # Load each recording
+    for edf_file in edf_files:
+
+        # Extract record ID from filename
+        record_id = Path(edf_file).stem
+
+        print(f"\nLoading {record_id}...")
+
+        try:
+            # Load this recording
+            multi_channel_data, info = load_holdout_data(
+                edf_file, epoch_length
+            )
+
+            # Store channel info from first recording
+            if channel_info is None:
+                channel_info = info
+
+            # Append data
+            if 'eeg' in multi_channel_data:
+                all_eeg.append(multi_channel_data['eeg'])
+            if 'eog' in multi_channel_data:
+                all_eog.append(multi_channel_data['eog'])
+            if 'emg' in multi_channel_data:
+                all_emg.append(multi_channel_data['emg'])
+
+
+            # Track record ID for each epoch
+            all_record_ids.extend([record_id] * info['n_epochs'])
+            all_epoch_ids.extend(list(range(info['n_epochs'])))
+
+        except Exception as e:
+            print(f"  ERROR loading {record_id}: {e}")
+            continue
+
+    # Concatenate all recordings
+    combined_data = {}
+
+    if all_eeg:
+        combined_data['eeg'] = np.concatenate(all_eeg, axis=0)
+        print(f"\nCombined EEG shape: {combined_data['eeg'].shape}")
+
+    if all_eog:
+        combined_data['eog'] = np.concatenate(all_eog, axis=0)
+        print(f"Combined EOG shape: {combined_data['eog'].shape}")
+
+    if all_emg:
+        combined_data['emg'] = np.concatenate(all_emg, axis=0)
+        print(f"Combined EMG shape: {combined_data['emg'].shape}")
+
+    combined_record_ids = np.array(all_record_ids)
+
+
+    return combined_data, all_epoch_ids, combined_record_ids, channel_info
 
 if __name__ == '__main__':
     # Example usage
