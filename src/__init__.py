@@ -28,6 +28,17 @@ from .classification import (
     train_classifier
 )
 
+from .metrics import (
+    calculate_cohens_kappa,
+    interpret_kappa,
+    calculate_multiclass_roc_auc,
+    plot_roc_curves,
+    calculate_feature_importance,
+    plot_feature_importance,
+    print_advanced_metrics_summary,
+    generate_iteration1_feature_names
+)
+
 from .visualization import (
     visualize_results
 )
@@ -59,6 +70,15 @@ __all__ = [
     'select_features',
     # classification
     'train_classifier',
+    #metrics
+    'calculate_cohens_kappa',
+    'interpret_kappa',
+    'calculate_multiclass_roc_auc',
+    'plot_roc_curves',
+    'calculate_feature_importance',
+    'plot_feature_importance',
+    'print_advanced_metrics_summary',
+    'generate_iteration1_feature_names',
     # visualization
     'visualize_results',
     # report
@@ -66,4 +86,5 @@ __all__ = [
     # utils
     'save_cache',
     'load_cache',
+    
 ]

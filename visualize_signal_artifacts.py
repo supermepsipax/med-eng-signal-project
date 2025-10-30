@@ -16,22 +16,7 @@ Features:
 
 import matplotlib
 # Try to set an interactive backend
-# Try multiple backends in order of preference
-backends = ['TkAgg', 'Qt5Agg', 'GTK3Agg', 'WXAgg']
-backend_set = False
-
-for backend in backends:
-    try:
-        matplotlib.use(backend)
-        backend_set = True
-        print(f"Using matplotlib backend: {backend}")
-        break
-    except:
-        continue
-
-if not backend_set:
-    print("Warning: No interactive backend found. Plots may not display properly.")
-    print("Consider installing: sudo apt-get install python3-tk")
+# Try multiple backends in order of preferencebackend_set = False
 
 import numpy as np
 import matplotlib.pyplot as plt
