@@ -30,13 +30,12 @@ from .classification import (
 
 from .metrics import (
     calculate_cohens_kappa,
-    interpret_kappa,
     calculate_multiclass_roc_auc,
     plot_roc_curves,
     calculate_feature_importance,
     plot_feature_importance,
-    print_advanced_metrics_summary,
-    generate_iteration1_feature_names
+    generate_iteration1_feature_names,
+    get_kappa_interpretation
 )
 
 from .visualization import (
@@ -72,13 +71,12 @@ __all__ = [
     'train_classifier',
     #metrics
     'calculate_cohens_kappa',
-    'interpret_kappa',
     'calculate_multiclass_roc_auc',
     'plot_roc_curves',
     'calculate_feature_importance',
     'plot_feature_importance',
-    'print_advanced_metrics_summary',
     'generate_iteration1_feature_names',
+    'get_kappa_interpretation'
     # visualization
     'visualize_results',
     # report

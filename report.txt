@@ -1,5 +1,40 @@
 
-    
+======================================================================
+SLEEP SCORING REPORT - ITERATION 1
+======================================================================
+Generated: 2025-11-04 23:41:15
+
+======================================================================
+MODEL INFORMATION
+======================================================================
+Model Type: KNeighborsClassifier
+Classifier: KNN
+Number of Features: 32
+Number of Samples: 10293 epochs
+
+======================================================================
+PERFORMANCE METRICS
+======================================================================
+Accuracy:      0.6635 (± 0.0076)
+Kappa:         0.5109 (± 0.0106)
+F1-Score:      0.4684 (± 0.0058)
+
+======================================================================
+CONFUSION MATRIX
+======================================================================
+Predicted →
+Actual ↓      Wake      N1      N2      N3     REM
+Wake          2785      15     529      42     103
+N1             158       3      94       1      19
+N2             561      21    2711     341     174
+N3               8       0     394    1214       2
+REM            313      12     640      37     116
+
+======================================================================
+DETAILED PROCESSING LOG
+======================================================================
+
+
 === PROCESSING LOG ===
 --- Sleep Scoring Pipeline - Iteration 1 ---
 
@@ -241,16 +276,17 @@ Performing 5-fold stratified cross-validation...
 
 Cross-Validation Results:
 --------------------------------------------------
-Fold 1/5: Accuracy=0.659, Macro F1=0.462
-Fold 2/5: Accuracy=0.661, Macro F1=0.463
-Fold 3/5: Accuracy=0.664, Macro F1=0.470
-Fold 4/5: Accuracy=0.656, Macro F1=0.468
-Fold 5/5: Accuracy=0.678, Macro F1=0.478
+Fold 1/5: Accuracy=0.659, Macro F1=0.462, Kappa=0.504
+Fold 2/5: Accuracy=0.661, Macro F1=0.463, Kappa=0.506
+Fold 3/5: Accuracy=0.664, Macro F1=0.470, Kappa=0.513
+Fold 4/5: Accuracy=0.656, Macro F1=0.468, Kappa=0.502
+Fold 5/5: Accuracy=0.678, Macro F1=0.478, Kappa=0.531
 --------------------------------------------------
 
 Cross-Validation Summary:
 Mean Accuracy: 0.663 (+/- 0.008)
 Mean Macro F1-Score: 0.468 (+/- 0.006)
+Mean Cohen's Kappa: 0.511 (+/- 0.011)
 Accuracy Range: [0.656, 0.678]
 
 Comprehensive Performance Metrics (Across All CV Folds):
@@ -296,75 +332,20 @@ Notes for Sleep Scoring:
 - Clinical focus: High sensitivity for REM and N3 stages
 
 ======================================================================
-ADVANCED METRICS ANALYSIS
-======================================================================
-
-======================================================================
-ADVANCED PERFORMANCE METRICS
-======================================================================
-
-1. Cohen's Kappa (Inter-Rater Agreement)
-----------------------------------------------------------------------
-   Kappa Score: 0.4322
-   Interpretation: Moderate agreement
-   Note: Kappa accounts for chance agreement, making it more
-         reliable than accuracy for imbalanced datasets.
-
-2. ROC-AUC Scores (One-vs-Rest)
-----------------------------------------------------------------------
-   Per-Class AUC Scores:
-      Wake    : 0.8574
-      N1      : 0.5237
-      N2      : 0.7439
-      N3      : 0.8966
-      REM     : 0.6366
-
-   Macro-Averaged AUC:    0.7316
-   Weighted-Averaged AUC: 0.7886
-   Note: AUC > 0.5 indicates better than random classification.
-         AUC = 1.0 indicates perfect classification.
-
-3. Feature Importance Analysis
-----------------------------------------------------------------------
-   ⚠️  Not available for k-NN classifier (Iteration 1).
-   Note: Feature importance will be available in Iteration 3+
-         when using Random Forest classifier.
-   Alternative: Consider using:
-      - Permutation importance (sklearn.inspection.permutation_importance)
-      - Univariate feature selection scores
-
-======================================================================
-
-Generating ROC curves...
-✓ ROC curves saved to: roc_curves_cv.png
-
-Generating feature importance plot...
-ℹ️  Feature importance not available for k-NN (Iteration 1)
-   This will be available in Iteration 3+ with Random Forest
-
-======================================================================
 Training final model on all available data...
 ======================================================================
 Final model training complete!
 Trained knn classifier
+Cross-validation accuracy: 0.663 (±0.008)
 
 === STEP 6: VISUALIZATION ===
 Visualizing results...
+✓ Confusion matrix saved to: confusion_matrix.png
+✓ ROC curves saved to: roc_curves_cv.png
 
-=== STEP 7: PROCESSING LOG & REPORT GENERATION ===
+=== STEP 7: REPORT GENERATION ===
 
 
-
-    # Sleep Scoring Report - Iteration 1
-
-    ## Model
-    KNeighborsClassifier
-
-    ## Performance
-    Accuracy: ...
-    Kappa: ...
-    F1-score: ...
-
-    ## Notes
-    This is a dummy report. Implement full report generation.
-    
+======================================================================
+END OF REPORT
+======================================================================
