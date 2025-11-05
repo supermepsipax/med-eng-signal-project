@@ -109,6 +109,14 @@ def main():
         print("Students must implement feature extraction first.")
         model = None
 
+    # Create a string buffer
+    stdout_buffer = io.StringIO()
+
+    # Save the original stdout
+    original_stdout = sys.stdout
+
+    # Redirect stdout to the buffer
+    sys.stdout = stdout_buffer 
     # 6. Visualization
     print("\n=== STEP 6: VISUALIZATION ===")
     if model is not None:
