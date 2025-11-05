@@ -1,4 +1,8 @@
 # Byte-compiled / optimized / DLL files
+
+report.txt
+confustion_matrix.png
+
 __pycache__/
 *.py[codz]
 *$py.class

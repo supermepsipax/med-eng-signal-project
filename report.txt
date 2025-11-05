@@ -1,18 +1,373 @@
 
-    
+======================================================================
+SLEEP SCORING REPORT - ITERATION 2
+======================================================================
+Generated: 2025-11-05 11:33:27
+
+======================================================================
+MODEL INFORMATION
+======================================================================
+Model Type: SVC
+Classifier: SVM
+Number of Features: 124
+Number of Samples: 10293 epochs
+
+======================================================================
+PERFORMANCE METRICS
+======================================================================
+Accuracy:      0.8082 (± 0.0000)
+Kappa:         0.7423 (± 0.0000)
+F1-Score:      0.7280 (± 0.0000)
+
+======================================================================
+CONFUSION MATRIX
+======================================================================
+Predicted →
+Actual ↓      Wake      N1      N2      N3     REM
+Wake           568      94      18       1      14
+N1              11      38       3       0       3
+N2              11      62     570      88      31
+N3               0       0      17     307       0
+REM              3      16      22       1     181
+
+======================================================================
+DETAILED PROCESSING LOG
+======================================================================
+
+
+=== PROCESSING LOG ===
+--- Sleep Scoring Pipeline - Iteration 2 ---
+
+=== STEP 1: DATA LOADING ===
+Loading all training data from data/training/...
+Found 10 recordings
+
+Loading R1...
+Loading training data from data/training/R1.edf and data/training/R1.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1083 epochs (9.03 hours)
+Sleep stage distribution:
+  Wake: 333 epochs (30.7%)
+  N1: 47 epochs (4.3%)
+  N2: 457 epochs (42.2%)
+  N3: 145 epochs (13.4%)
+  REM: 102 epochs (9.4%)
+
+Loading R10...
+Loading training data from data/training/R10.edf and data/training/R10.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1083 epochs (9.03 hours)
+Sleep stage distribution:
+  Wake: 251 epochs (23.2%)
+  N1: 11 epochs (1.0%)
+  N2: 491 epochs (45.3%)
+  N3: 163 epochs (15.0%)
+  REM: 168 epochs (15.5%)
+
+Loading R2...
+Loading training data from data/training/R2.edf and data/training/R2.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1078 epochs (8.98 hours)
+Sleep stage distribution:
+  Wake: 716 epochs (66.4%)
+  N1: 3 epochs (0.3%)
+  N2: 238 epochs (22.1%)
+  N3: 61 epochs (5.7%)
+  REM: 61 epochs (5.7%)
+
+Loading R3...
+Loading training data from data/training/R3.edf and data/training/R3.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1048 epochs (8.73 hours)
+Sleep stage distribution:
+  Wake: 332 epochs (31.6%)
+  N1: 35 epochs (3.3%)
+  N2: 289 epochs (27.6%)
+  N3: 307 epochs (29.3%)
+  REM: 86 epochs (8.2%)
+
+Loading R4...
+Loading training data from data/training/R4.edf and data/training/R4.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 874 epochs (7.28 hours)
+Sleep stage distribution:
+  Wake: 273 epochs (31.2%)
+  N1: 18 epochs (2.1%)
+  N2: 177 epochs (20.2%)
+  N3: 315 epochs (36.0%)
+  REM: 92 epochs (10.5%)
+
+Loading R5...
+Loading training data from data/training/R5.edf and data/training/R5.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1083 epochs (9.03 hours)
+Sleep stage distribution:
+  Wake: 344 epochs (31.7%)
+  N1: 42 epochs (3.9%)
+  N2: 508 epochs (46.9%)
+  N3: 99 epochs (9.1%)
+  REM: 91 epochs (8.4%)
+
+Loading R6...
+Loading training data from data/training/R6.edf and data/training/R6.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1083 epochs (9.03 hours)
+Sleep stage distribution:
+  Wake: 310 epochs (28.6%)
+  N1: 48 epochs (4.4%)
+  N2: 529 epochs (48.8%)
+  N3: 39 epochs (3.6%)
+  REM: 158 epochs (14.6%)
+
+Loading R7...
+Loading training data from data/training/R7.edf and data/training/R7.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 918 epochs (7.65 hours)
+Sleep stage distribution:
+  Wake: 254 epochs (27.6%)
+  N1: 18 epochs (2.0%)
+  N2: 459 epochs (49.9%)
+  N3: 40 epochs (4.4%)
+  REM: 148 epochs (16.1%)
+
+Loading R8...
+Loading training data from data/training/R8.edf and data/training/R8.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 958 epochs (7.98 hours)
+Sleep stage distribution:
+  Wake: 288 epochs (30.0%)
+  N1: 15 epochs (1.6%)
+  N2: 362 epochs (37.7%)
+  N3: 213 epochs (22.2%)
+  REM: 81 epochs (8.4%)
+
+Loading R9...
+Loading training data from data/training/R9.edf and data/training/R9.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1085 epochs (9.04 hours)
+Sleep stage distribution:
+  Wake: 383 epochs (35.3%)
+  N1: 38 epochs (3.5%)
+  N2: 298 epochs (27.4%)
+  N3: 236 epochs (21.7%)
+  REM: 131 epochs (12.1%)
+
+Combined EEG shape: (10293, 2, 3750)
+Combined EOG shape: (10293, 2, 3750)
+Combined EMG shape: (10293, 1, 3750)
+
+Total loaded: 10293 epochs from 10 recordings
+Sleep stage distribution:
+  Wake: 3474 epochs (33.8%)
+  N1: 275 epochs (2.7%)
+  N2: 3808 epochs (37.0%)
+  N3: 1618 epochs (15.7%)
+  REM: 1118 epochs (10.9%)
+
+Loaded multi-channel data:
+  EEG: (10293, 2, 3750)
+  EOG: (10293, 2, 3750)
+  EMG: (10293, 1, 3750)
+  Labels: (10293,)
+  Unique recordings: 10
+
+Channel information:
+  EEG sampling rate: 125.0 Hz
+  EOG sampling rate: 125.0 Hz
+  EMG sampling rate: 125.0 Hz
+
+=== STEP 2: PREPROCESSING ===
+Preprocessing data for iteration 2...
+Processing multi-channel data (EEG + EOG + EMG)
+Iteration 2: Processing EEG + EOG channels
+Preprocessed multi-channel data:
+  EEG: (10293, 2, 3750)
+  EOG: (10293, 2, 3750)
+
+=== STEP 3: FEATURE EXTRACTION ===
+Extracting features for iteration 2...
+Processing multi-channel data (EEG + EOG + EMG)
+Iteration 2: 124 features (expected: 124)
+  - 2 EEG channels × 31 features (16 time + 15 freq)
+  - 2 EOG channels × 31 features (16 time + 15 freq)
+Extracted features shape: (10293, 124)
+
+=== STEP 4: FEATURE SELECTION ===
+Selecting features for iteration 2...
+Input features shape: (10293, 124)
+Early iteration - using all available features
+Selected features shape: (10293, 124)
+Selected features shape: (10293, 124)
+
+=== STEP 5: CLASSIFICATION ===
+Training classifier for Iteration 2...
+Features shape: (10293, 124), Labels shape: (10293,)
+
+======================================================================
+DATA SPLIT
+======================================================================
+Training set: 8234 samples (80.0%)
+Test set: 2059 samples (20.0%)
+
+Class distribution (train/test):
+  Wake: 33.8% / 33.8%
+  N1: 2.7% / 2.7%
+  N2: 37.0% / 37.0%
+  N3: 15.7% / 15.7%
+  REM: 10.9% / 10.8%
+
+======================================================================
+ITERATION 2: SVM CLASSIFIER
+======================================================================
+Training single SVM model with fixed parameters:
+  C=1.0, kernel='rbf', gamma='scale', class_weight='balanced'
+  (Set SVM_TUNE_HYPERPARAMS=True in config to enable hyperparameter tuning)
+
+⚙️  Applying StandardScaler (CRITICAL for SVM performance)...
+   Feature scaling statistics:
+     Before: mean range [-8.92e-05, 1.66e+08]
+     After:  mean range [-5.61e-15, 1.78e-14]
+     Before: std range  [0.00e+00, 3.33e+08]
+     After:  std range  [0.00e+00, 1.00e+00]
+
+Training model on full training set...
+  Training samples: 8234
+  Features: 124
+✓ Training complete
+
+======================================================================
+FINAL EVALUATION ON HELD-OUT TEST SET
+======================================================================
+Applying StandardScaler to test set...
+Test Accuracy: 0.808
+Test Macro F1: 0.728
+Test Cohen's Kappa: 0.742
+
+======================================================================
+SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
+======================================================================
+Overall Accuracy: 0.808
+Macro F1-Score: 0.728
+Weighted F1-Score: 0.829
+
+Confusion Matrix:
+      Wake  N1   N2   N3  REM
+Wake   568  94   18    1   14
+N1      11  38    3    0    3
+N2      11  62  570   88   31
+N3       0   0   17  307    0
+REM      3  16   22    1  181
+
+Per-Class Performance Metrics:
+----------------------------------------------------------------------
+Stage    Accuracy   Sensitivity  Specificity  F1-Score  
+----------------------------------------------------------------------
+Wake     0.817      0.817        0.982        0.882     
+N1       0.691      0.691        0.914        0.287     
+N2       0.748      0.748        0.954        0.819     
+N3       0.948      0.948        0.948        0.852     
+REM      0.812      0.812        0.974        0.801     
+----------------------------------------------------------------------
+
+Class Distribution in Test Set:
+Wake: 695 samples (33.8%)
+N1: 55 samples (2.7%)
+N2: 762 samples (37.0%)
+N3: 324 samples (15.7%)
+REM: 223 samples (10.8%)
+
+Notes for Sleep Scoring:
+- Sensitivity = Recall = True Positive Rate (correctly identified stages)
+- Specificity = True Negative Rate (correctly rejected stages)
+- Sleep stage imbalance is natural (more N2, less N1/REM)
+- Consider Cohen's kappa for chance-corrected agreement
+- Clinical focus: High sensitivity for REM and N3 stages
+
+======================================================================
+ADVANCED METRICS ANALYSIS (TEST SET)
+======================================================================
+Trained svm classifier
+
+📊 Final Test Metrics Summary:
+  Accuracy: 0.808
+  Macro F1: 0.728
+  Weighted F1: 0.829
+  Cohen's Kappa: 0.742
+
 === STEP 6: VISUALIZATION ===
 Visualizing results...
 ✓ Confusion matrix saved to: confusion_matrix.png
 ✓ ROC curves saved to: roc_curves_cv.png
-
-=== STEP 7: PROCESSING LOG & REPORT GENERATION ===
-
-
-
-    # Sleep Scoring Report - Iteration 2
-
-    ## Model
-    SVC
 
 
 ======================================================================

@@ -13,8 +13,9 @@ try:
     from src.metrics import (
         calculate_cohens_kappa,
         calculate_multiclass_roc_auc,
-        generate_iteration1_feature_names
+        generate_iteration1_feature_names,
     )
+
     HAS_METRICS = True
 except ImportError:
     print("⚠️  Warning: metrics.py not found. Advanced metrics will not be available.")
@@ -37,18 +38,22 @@ def train_classifier(features, labels, config):
     if features.shape[0] == 0 or features.shape[1] == 0:
         raise ValueError("No features available for training!")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("DATA SPLIT")
-    print("="*70)
+    print("=" * 70)
     X_train, X_test, y_train, y_test = train_test_split(
         features, labels, test_size=0.2, random_state=42, stratify=labels
     )
-    print(f"Training set: {X_train.shape[0]} samples ({X_train.shape[0]/features.shape[0]*100:.1f}%)")
-    print(f"Test set: {X_test.shape[0]} samples ({X_test.shape[0]/features.shape[0]*100:.1f}%)")
+    print(
+        f"Training set: {X_train.shape[0]} samples ({X_train.shape[0] / features.shape[0] * 100:.1f}%)"
+    )
+    print(
+        f"Test set: {X_test.shape[0]} samples ({X_test.shape[0] / features.shape[0] * 100:.1f}%)"
+    )
 
     train_classes, train_counts = np.unique(y_train, return_counts=True)
     test_classes, test_counts = np.unique(y_test, return_counts=True)
-    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    stage_names = ["Wake", "N1", "N2", "N3", "REM"]
     print("\nClass distribution (train/test):")
     for cls in range(5):
         if cls in train_classes and cls in test_classes:
@@ -66,76 +71,115 @@ def train_classifier(features, labels, config):
         raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
 
     # Evaluate on held-out test set
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("FINAL EVALUATION ON HELD-OUT TEST SET")
-    print("="*70)
+    print("=" * 70)
 
     # Apply scaler if model has one (SVM with StandardScaler)
-    if hasattr(best_model, 'scaler'):
+    if hasattr(best_model, "scaler"):
         print("Applying StandardScaler to test set...")
         X_test_scaled = best_model.scaler.transform(X_test)
         y_pred = best_model.predict(X_test_scaled)
-        if hasattr(best_model, 'predict_proba'):
+        if hasattr(best_model, "predict_proba"):
             y_pred_proba = best_model.predict_proba(X_test_scaled)
     else:
         y_pred = best_model.predict(X_test)
         y_pred_proba = None
-        if hasattr(best_model, 'predict_proba'):
+        if hasattr(best_model, "predict_proba"):
             y_pred_proba = best_model.predict_proba(X_test)
 
     test_accuracy = accuracy_score(y_test, y_pred)
-    test_f1 = f1_score(y_test, y_pred, average='macro', zero_division=0)
+    test_f1 = f1_score(y_test, y_pred, average="macro", zero_division=0)
+    test_weighted_f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
 
+    # Calculate Cohen's Kappa
     if HAS_METRICS:
         test_kappa = calculate_cohens_kappa(y_test, y_pred)
         print(f"Test Accuracy: {test_accuracy:.3f}")
         print(f"Test Macro F1: {test_f1:.3f}")
         print(f"Test Cohen's Kappa: {test_kappa:.3f}")
     else:
+        test_kappa = None
         print(f"Test Accuracy: {test_accuracy:.3f}")
         print(f"Test Macro F1: {test_f1:.3f}")
+
+    # Calculate per-class metrics
+    per_class_precision = precision_score(y_test, y_pred, average=None, zero_division=0)
+    per_class_recall = recall_score(y_test, y_pred, average=None, zero_division=0)
+    per_class_f1 = f1_score(y_test, y_pred, average=None, zero_division=0)
+
+    # Confusion matrix
+    conf_matrix = confusion_matrix(y_test, y_pred)
+
+    # Build comprehensive metrics dictionary
+    metrics_dict = {
+        # Test set metrics
+        "test_accuracy": test_accuracy,
+        "test_f1_macro": test_f1,
+        "test_f1_weighted": test_weighted_f1,
+        "test_kappa": test_kappa,
+        # Predictions and ground truth
+        "y_true": y_test,
+        "y_pred": y_pred,
+        "y_pred_proba": y_pred_proba,
+        # Detailed metrics
+        "confusion_matrix": conf_matrix,
+        "per_class_precision": per_class_precision,
+        "per_class_recall": per_class_recall,
+        "per_class_f1": per_class_f1,
+        # Metadata
+        "stage_names": stage_names,
+        "n_train_samples": len(y_train),
+        "n_test_samples": len(y_test),
+        "n_features": features.shape[1],
+        # Compatibility fields for visualization/report (Valeria branch integration)
+        "all_true_labels": y_test,  # Alias for y_true
+        "all_predictions": y_pred,  # Alias for y_pred
+        "probabilities": y_pred_proba,  # Alias for y_pred_proba
+        "n_samples": features.shape[0],  # Total samples (train + test)
+        "classifier_type": config.CLASSIFIER_TYPE,
+        "iteration": config.CURRENT_ITERATION,
+        "model": best_model,  # Include model for feature importance in visualization
+        # CV results format for report.py compatibility (maps test metrics to CV format)
+        "cv_results": {
+            "mean_accuracy": test_accuracy,
+            "std_accuracy": 0.0,  # N/A for train/test split
+            "mean_f1": test_f1,
+            "std_f1": 0.0,  # N/A for train/test split
+            "mean_kappa": test_kappa if test_kappa is not None else 0.0,
+            "std_kappa": 0.0,  # N/A for train/test split
+        },
+    }
 
     print_performance_metrics(y_test, y_pred)
 
     if HAS_METRICS:
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("ADVANCED METRICS ANALYSIS (TEST SET)")
-        print("="*70)
+        print("=" * 70)
 
-        # Generate feature names
-        feature_names = [f'Feature_{i}' for i in range(features.shape[1])]
+        # Generate feature names - try iteration-specific, fall back to generic
+        try:
+            n_channels = (
+                features.shape[1] // 16
+                if config.CURRENT_ITERATION == 1
+                else features.shape[1] // 31
+            )
+            feature_names = generate_iteration1_feature_names(
+                n_channels=max(1, n_channels)
+            )
+            if len(feature_names) != features.shape[1]:
+                feature_names = [f"Feature_{i}" for i in range(features.shape[1])]
+        except:
+            feature_names = [f"Feature_{i}" for i in range(features.shape[1])]
+
+        # Add feature names to metrics dict
+        metrics_dict["feature_names"] = feature_names
 
         # y_pred_proba was already computed above with correct scaling
 
-        print_advanced_metrics_summary(
-            y_true=y_test,
-            y_pred=y_pred,
-            y_pred_proba=y_pred_proba,
-            model=best_model,
-            feature_names=feature_names,
-            stage_names=stage_names
-        )
 
-        # ROC curves
-        if y_pred_proba is not None:
-            print("\nGenerating ROC curves...")
-            roc_fig = plot_roc_curves(
-                y_test, y_pred_proba, n_classes=5, stage_names=stage_names
-            )
-            roc_fig.savefig('roc_curves_test.png', dpi=150, bbox_inches='tight')
-            print(f"✓ ROC curves saved to: roc_curves_test.png")
-
-        # Feature importance
-        if config.CURRENT_ITERATION >= 3:
-            print("\nGenerating feature importance plot...")
-            feature_importance_dict = calculate_feature_importance(best_model, feature_names)
-            if feature_importance_dict['available']:
-                fi_fig = plot_feature_importance(feature_importance_dict, top_n=20)
-                if fi_fig is not None:
-                    fi_fig.savefig('feature_importance.png', dpi=150, bbox_inches='tight')
-                    print(f"✓ Feature importance plot saved to: feature_importance.png")
-
-    return best_model
+    return best_model, metrics_dict
 
 
 def train_knn(X_train, y_train, config):
@@ -145,15 +189,15 @@ def train_knn(X_train, y_train, config):
     Strategy: k-NN is simple and has minimal hyperparameters. We can optionally
     tune k using CV, but the default k=5 often works well.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("ITERATION 1: k-NN CLASSIFIER")
-    print("="*70)
+    print("=" * 70)
 
     # Option 1: Use fixed k (faster, simpler)
-    use_tuning = getattr(config, 'KNN_TUNE_K', False)
+    use_tuning = getattr(config, "KNN_TUNE_K", False)
 
     if not use_tuning:
-        k = getattr(config, 'KNN_N_NEIGHBORS', 5)
+        k = getattr(config, "KNN_N_NEIGHBORS", 5)
         print(f"Using fixed k={k}")
         print(f"  (Set KNN_TUNE_K=True in config to enable hyperparameter tuning)")
 
@@ -173,15 +217,15 @@ def train_knn(X_train, y_train, config):
         # Option 2: Tune k using GridSearchCV (slower but finds optimal k)
         print("Tuning k parameter using GridSearchCV...")
         k_range = range(1, min(31, len(X_train) // 10))  # Test k from 1 to 30
-        param_grid = {'n_neighbors': k_range}
+        param_grid = {"n_neighbors": k_range}
 
         grid_search = GridSearchCV(
             KNeighborsClassifier(),
             param_grid,
             cv=config.CV_FOLDS,
-            scoring='accuracy',
+            scoring="accuracy",
             n_jobs=-1,
-            verbose=1
+            verbose=1,
         )
         grid_search.fit(X_train, y_train)
 
@@ -198,22 +242,24 @@ def train_svm(X_train, y_train, config):
     If SVM_TUNE_HYPERPARAMS=False: Train single model with fixed parameters (fast)
     If SVM_TUNE_HYPERPARAMS=True: Use GridSearchCV for hyperparameter tuning (slow but optimal)
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("ITERATION 2: SVM CLASSIFIER")
-    print("="*70)
+    print("=" * 70)
 
     # Check if hyperparameter tuning is enabled
-    use_tuning = getattr(config, 'SVM_TUNE_HYPERPARAMS', False)
+    use_tuning = getattr(config, "SVM_TUNE_HYPERPARAMS", False)
 
     if not use_tuning:
         # Option 1: Train single model with fixed parameters (FAST)
-        C = getattr(config, 'SVM_C', 1.0)
-        kernel = getattr(config, 'SVM_KERNEL', 'rbf')
-        gamma = getattr(config, 'SVM_GAMMA', 'scale')
+        C = getattr(config, "SVM_C", 1.0)
+        kernel = getattr(config, "SVM_KERNEL", "rbf")
+        gamma = getattr(config, "SVM_GAMMA", "scale")
 
         print(f"Training single SVM model with fixed parameters:")
         print(f"  C={C}, kernel='{kernel}', gamma='{gamma}', class_weight='balanced'")
-        print(f"  (Set SVM_TUNE_HYPERPARAMS=True in config to enable hyperparameter tuning)")
+        print(
+            f"  (Set SVM_TUNE_HYPERPARAMS=True in config to enable hyperparameter tuning)"
+        )
 
         # CRITICAL: Scale features for SVM
         print("\n⚙️  Applying StandardScaler (CRITICAL for SVM performance)...")
@@ -221,19 +267,27 @@ def train_svm(X_train, y_train, config):
         X_train_scaled = scaler.fit_transform(X_train)
 
         print("   Feature scaling statistics:")
-        print(f"     Before: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]")
-        print(f"     After:  mean range [{X_train_scaled.mean(axis=0).min():.2e}, {X_train_scaled.mean(axis=0).max():.2e}]")
-        print(f"     Before: std range  [{X_train.std(axis=0).min():.2e}, {X_train.std(axis=0).max():.2e}]")
-        print(f"     After:  std range  [{X_train_scaled.std(axis=0).min():.2e}, {X_train_scaled.std(axis=0).max():.2e}]")
+        print(
+            f"     Before: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]"
+        )
+        print(
+            f"     After:  mean range [{X_train_scaled.mean(axis=0).min():.2e}, {X_train_scaled.mean(axis=0).max():.2e}]"
+        )
+        print(
+            f"     Before: std range  [{X_train.std(axis=0).min():.2e}, {X_train.std(axis=0).max():.2e}]"
+        )
+        print(
+            f"     After:  std range  [{X_train_scaled.std(axis=0).min():.2e}, {X_train_scaled.std(axis=0).max():.2e}]"
+        )
 
         # Use class_weight='balanced' to handle class imbalance
         model = SVC(
             C=C,
             kernel=kernel,
             gamma=gamma,
-            class_weight='balanced',  # CRITICAL for imbalanced sleep data
+            class_weight="balanced",  # CRITICAL for imbalanced sleep data
             probability=True,
-            random_state=42
+            random_state=42,
         )
 
         # Train on full training set with scaled features
@@ -258,18 +312,22 @@ def train_svm(X_train, y_train, config):
         X_train_scaled = scaler.fit_transform(X_train)
 
         print("   Feature scaling statistics:")
-        print(f"     Before: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]")
-        print(f"     After:  mean range [{X_train_scaled.mean(axis=0).min():.2e}, {X_train_scaled.mean(axis=0).max():.2e}]")
+        print(
+            f"     Before: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]"
+        )
+        print(
+            f"     After:  mean range [{X_train_scaled.mean(axis=0).min():.2e}, {X_train_scaled.mean(axis=0).max():.2e}]"
+        )
 
         # Define hyperparameter search space
         param_grid = {
-            'C': [0.1, 1.0, 10.0, 100.0],
-            'gamma': ['scale', 'auto', 0.001, 0.01, 0.1],
-            'kernel': ['rbf', 'linear']
+            "C": [0.1, 1.0, 10.0, 100.0],
+            "gamma": ["scale", "auto", 0.001, 0.01, 0.1],
+            "kernel": ["rbf", "linear"],
         }
 
         # Allow config to override search space
-        if hasattr(config, 'SVM_PARAM_GRID'):
+        if hasattr(config, "SVM_PARAM_GRID"):
             param_grid = config.SVM_PARAM_GRID
 
         print("\nHyperparameter search space:")
@@ -277,33 +335,37 @@ def train_svm(X_train, y_train, config):
             print(f"  {param}: {values}")
 
         print(f"\nPerforming GridSearchCV with {config.CV_FOLDS}-fold CV...")
-        print(f"Total combinations to test: {np.prod([len(v) for v in param_grid.values()])}")
+        print(
+            f"Total combinations to test: {np.prod([len(v) for v in param_grid.values()])}"
+        )
         print("(This may take several minutes...)")
 
         grid_search = GridSearchCV(
-            SVC(probability=True, class_weight='balanced', random_state=42),
+            SVC(probability=True, class_weight="balanced", random_state=42),
             param_grid,
             cv=config.CV_FOLDS,
-            scoring='accuracy',
+            scoring="accuracy",
             n_jobs=-1,
-            verbose=1
+            verbose=1,
         )
         grid_search.fit(X_train_scaled, y_train)
 
-        print("\n" + "-"*70)
+        print("\n" + "-" * 70)
         print("GridSearchCV Results:")
-        print("-"*70)
+        print("-" * 70)
         print(f"Best hyperparameters: {grid_search.best_params_}")
         print(f"Best CV Accuracy: {grid_search.best_score_:.3f}")
 
         # Show top 5 configurations
         results_df = pd.DataFrame(grid_search.cv_results_)
-        results_df = results_df.sort_values('rank_test_score')
+        results_df = results_df.sort_values("rank_test_score")
         print("\nTop 5 configurations:")
         for i, row in results_df.head(5).iterrows():
-            print(f"  Rank {int(row['rank_test_score'])}: "
-                  f"C={row['param_C']}, gamma={row['param_gamma']}, kernel={row['param_kernel']}, "
-                  f"Score={row['mean_test_score']:.3f} (+/- {row['std_test_score']:.3f})")
+            print(
+                f"  Rank {int(row['rank_test_score'])}: "
+                f"C={row['param_C']}, gamma={row['param_gamma']}, kernel={row['param_kernel']}, "
+                f"Score={row['mean_test_score']:.3f} (+/- {row['std_test_score']:.3f})"
+            )
 
         # Store scaler with model for later use
         best_model = grid_search.best_estimator_
@@ -319,20 +381,20 @@ def train_random_forest(X_train, y_train, config):
     Strategy: RF has many hyperparameters. Use GridSearchCV to tune the most
     important ones: n_estimators, max_depth, min_samples_split.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("ITERATION 3+: RANDOM FOREST CLASSIFIER WITH HYPERPARAMETER TUNING")
-    print("="*70)
+    print("=" * 70)
 
     # Define hyperparameter search space
     param_grid = {
-        'n_estimators': [50, 100, 200],
-        'max_depth': [None, 10, 20, 30],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4]
+        "n_estimators": [50, 100, 200],
+        "max_depth": [None, 10, 20, 30],
+        "min_samples_split": [2, 5, 10],
+        "min_samples_leaf": [1, 2, 4],
     }
 
     # Allow config to override search space
-    if hasattr(config, 'RF_PARAM_GRID'):
+    if hasattr(config, "RF_PARAM_GRID"):
         param_grid = config.RF_PARAM_GRID
 
     print("Hyperparameter search space:")
@@ -340,39 +402,45 @@ def train_random_forest(X_train, y_train, config):
         print(f"  {param}: {values}")
 
     print(f"\nPerforming GridSearchCV with {config.CV_FOLDS}-fold CV...")
-    print(f"Total combinations to test: {np.prod([len(v) for v in param_grid.values()])}")
+    print(
+        f"Total combinations to test: {np.prod([len(v) for v in param_grid.values()])}"
+    )
     print("(This may take several minutes...)")
 
     grid_search = GridSearchCV(
         RandomForestClassifier(random_state=42, n_jobs=-1),
         param_grid,
         cv=config.CV_FOLDS,
-        scoring='accuracy',
+        scoring="accuracy",
         n_jobs=-1,
-        verbose=1
+        verbose=1,
     )
     grid_search.fit(X_train, y_train)
 
-    print("\n" + "-"*70)
+    print("\n" + "-" * 70)
     print("GridSearchCV Results:")
-    print("-"*70)
+    print("-" * 70)
     print(f"Best hyperparameters: {grid_search.best_params_}")
     print(f"Best CV Accuracy: {grid_search.best_score_:.3f}")
 
     # Show top 5 configurations
     results_df = pd.DataFrame(grid_search.cv_results_)
-    results_df = results_df.sort_values('rank_test_score')
+    results_df = results_df.sort_values("rank_test_score")
     print("\nTop 5 configurations:")
     for i, row in results_df.head(5).iterrows():
-        print(f"  Rank {int(row['rank_test_score'])}: "
-              f"n_est={row['param_n_estimators']}, max_depth={row['param_max_depth']}, "
-              f"min_split={row['param_min_samples_split']}, min_leaf={row['param_min_samples_leaf']}, "
-              f"Score={row['mean_test_score']:.3f} (+/- {row['std_test_score']:.3f})")
+        print(
+            f"  Rank {int(row['rank_test_score'])}: "
+            f"n_est={row['param_n_estimators']}, max_depth={row['param_max_depth']}, "
+            f"min_split={row['param_min_samples_split']}, min_leaf={row['param_min_samples_leaf']}, "
+            f"Score={row['mean_test_score']:.3f} (+/- {row['std_test_score']:.3f})"
+        )
 
     # Optional: Show feature importances from best model
     best_model = grid_search.best_estimator_
-    print(f"\nBest model has {best_model.n_estimators} trees with "
-          f"max_depth={best_model.max_depth}")
+    print(
+        f"\nBest model has {best_model.n_estimators} trees with "
+        f"max_depth={best_model.max_depth}"
+    )
 
     return best_model
 
@@ -384,17 +452,17 @@ def print_performance_metrics(y_true, y_pred):
     Includes accuracy, sensitivity (recall), specificity, and F1-score for each sleep stage.
     """
     # Sleep stage labels and names (0=Wake, 1=N1, 2=N2, 3=N3, 4=REM)
-    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    stage_names = ["Wake", "N1", "N2", "N3", "REM"]
     stage_labels = list(range(5))
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS")
-    print("="*70)
+    print("=" * 70)
 
     # Overall metrics
     overall_accuracy = accuracy_score(y_true, y_pred)
-    macro_f1 = f1_score(y_true, y_pred, average='macro')
-    weighted_f1 = f1_score(y_true, y_pred, average='weighted')
+    macro_f1 = f1_score(y_true, y_pred, average="macro")
+    weighted_f1 = f1_score(y_true, y_pred, average="weighted")
 
     print(f"Overall Accuracy: {overall_accuracy:.3f}")
     print(f"Macro F1-Score: {macro_f1:.3f}")
@@ -411,21 +479,27 @@ def print_performance_metrics(y_true, y_pred):
     # Per-class metrics
     print("\nPer-Class Performance Metrics:")
     print("-" * 70)
-    print(f"{'Stage':<8} {'Accuracy':<10} {'Sensitivity':<12} {'Specificity':<12} {'F1-Score':<10}")
+    print(
+        f"{'Stage':<8} {'Accuracy':<10} {'Sensitivity':<12} {'Specificity':<12} {'F1-Score':<10}"
+    )
     print("-" * 70)
 
     # Calculate metrics for each sleep stage
     for i, stage_name in enumerate(stage_names):
         if i in y_true:  # Only calculate if stage is present in test set
             # Per-class accuracy (percentage of this class correctly classified)
-            class_mask = (y_true == i)
+            class_mask = y_true == i
             if np.sum(class_mask) > 0:
-                class_accuracy = np.sum((y_pred == i) & (y_true == i)) / np.sum(class_mask)
+                class_accuracy = np.sum((y_pred == i) & (y_true == i)) / np.sum(
+                    class_mask
+                )
             else:
                 class_accuracy = 0.0
 
             # Sensitivity (Recall) - True Positive Rate
-            sensitivity = recall_score(y_true, y_pred, labels=[i], average=None, zero_division=0)[0]
+            sensitivity = recall_score(
+                y_true, y_pred, labels=[i], average=None, zero_division=0
+            )[0]
 
             # Specificity - True Negative Rate
             tn = np.sum((y_true != i) & (y_pred != i))
@@ -435,7 +509,9 @@ def print_performance_metrics(y_true, y_pred):
             # F1-Score
             f1 = f1_score(y_true, y_pred, labels=[i], average=None, zero_division=0)[0]
 
-            print(f"{stage_name:<8} {class_accuracy:<10.3f} {sensitivity:<12.3f} {specificity:<12.3f} {f1:<10.3f}")
+            print(
+                f"{stage_name:<8} {class_accuracy:<10.3f} {sensitivity:<12.3f} {specificity:<12.3f} {f1:<10.3f}"
+            )
         else:
             print(f"{stage_name:<8} {'N/A':<10} {'N/A':<12} {'N/A':<12} {'N/A':<10}")
 

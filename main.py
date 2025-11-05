@@ -102,21 +102,17 @@ def main():
     if selected_features.shape[1] > 0:
         model, metrics_dict = train_classifier(selected_features, labels, config)
         print(f"Trained {config.CLASSIFIER_TYPE} classifier")
-        print(f"Cross-validation accuracy: {metrics_dict['cv_results']['mean_accuracy']:.3f} "
-              f"(±{metrics_dict['cv_results']['std_accuracy']:.3f})")
+        print(f"\n📊 Final Test Metrics Summary:")
+        print(f"  Accuracy: {metrics_dict['test_accuracy']:.3f}")
+        print(f"  Macro F1: {metrics_dict['test_f1_macro']:.3f}")
+        print(f"  Weighted F1: {metrics_dict['test_f1_weighted']:.3f}")
+        if metrics_dict.get('test_kappa') is not None:
+            print(f"  Cohen's Kappa: {metrics_dict['test_kappa']:.3f}")
     else:
         print("⚠️  WARNING: Cannot train classifier - no features available!")
         print("Students must implement feature extraction first.")
         model = None
 
-    # Create a string buffer
-    stdout_buffer = io.StringIO()
-
-    # Save the original stdout
-    original_stdout = sys.stdout
-
-    # Redirect stdout to the buffer
-    sys.stdout = stdout_buffer 
     # 6. Visualization
     print("\n=== STEP 6: VISUALIZATION ===")
     if model is not None:
