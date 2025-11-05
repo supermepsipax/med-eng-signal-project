@@ -1,4 +1,3 @@
-
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
@@ -12,12 +11,7 @@ import pandas as pd
 try:
     from src.metrics import (
         calculate_cohens_kappa,
-        interpret_kappa,
         calculate_multiclass_roc_auc,
-        plot_roc_curves,
-        calculate_feature_importance,
-        plot_feature_importance,
-        print_advanced_metrics_summary,
         generate_iteration1_feature_names
     )
     HAS_METRICS = True
@@ -27,7 +21,17 @@ except ImportError:
 
 
 def train_classifier(features, labels, config):
-
+    """
+    Train a classifier with cross-validation and return model + metrics.
+    
+    Args:
+        features (np.ndarray): Feature matrix (n_samples, n_features)
+        labels (np.ndarray): Label array (n_samples,)
+        config (module): Configuration module
+    
+    Returns:
+        tuple: (trained_model, metrics_dict)
+    """
     print(f"Training {config.CLASSIFIER_TYPE} classifier...")
     print(f"Features shape: {features.shape}, Labels shape: {labels.shape}")
 
@@ -80,10 +84,10 @@ def train_classifier(features, labels, config):
 
     fold_accuracies = []
     fold_f1_scores = []
-    fold_kappa_scores = []  # NEW: Store kappa scores
+    fold_kappa_scores = []  
     fold_predictions = []
     fold_true_labels = []
-    fold_probabilities = []  # NEW: Store probabilities for ROC-AUC
+    fold_probabilities = []  
 
     print("\nCross-Validation Results:")
     print("-" * 50)
@@ -95,26 +99,25 @@ def train_classifier(features, labels, config):
         y_test_fold = labels[test_idx]
 
         model_fold, _ = create_model()
-
         model_fold.fit(X_train_fold, y_train_fold)
 
         y_pred_fold = model_fold.predict(X_test_fold)
         fold_acc = accuracy_score(y_test_fold, y_pred_fold)
         fold_f1 = f1_score(y_test_fold, y_pred_fold, average='macro', zero_division=0)
         
-        # NEW: Calculate Cohen's Kappa for this fold
+        # Calculate Cohen's Kappa if metrics available
         if HAS_METRICS:
             fold_kappa = calculate_cohens_kappa(y_test_fold, y_pred_fold)
             fold_kappa_scores.append(fold_kappa)
         else:
-            fold_kappa = 0.0  # Placeholder if metrics not available
+            fold_kappa = 0.0
 
         fold_accuracies.append(fold_acc)
         fold_f1_scores.append(fold_f1)
         fold_predictions.extend(y_pred_fold)
         fold_true_labels.extend(y_test_fold)
         
-        # NEW: Get probability predictions if available
+        # Store probabilities if available
         if hasattr(model_fold, 'predict_proba'):
             y_proba_fold = model_fold.predict_proba(X_test_fold)
             fold_probabilities.extend(y_proba_fold)
@@ -124,13 +127,12 @@ def train_classifier(features, labels, config):
 
     print("-" * 50)
 
-    # Display cross-validation summary statistics
+    # Calculate summary statistics
     mean_accuracy = np.mean(fold_accuracies)
     std_accuracy = np.std(fold_accuracies)
     mean_f1 = np.mean(fold_f1_scores)
     std_f1 = np.std(fold_f1_scores)
     
-    # NEW: Kappa summary
     if HAS_METRICS and len(fold_kappa_scores) > 0:
         mean_kappa = np.mean(fold_kappa_scores)
         std_kappa = np.std(fold_kappa_scores)
@@ -143,67 +145,11 @@ def train_classifier(features, labels, config):
     print(f"Mean Macro F1-Score: {mean_f1:.3f} (+/- {std_f1:.3f})")
     if HAS_METRICS:
         print(f"Mean Cohen's Kappa: {mean_kappa:.3f} (+/- {std_kappa:.3f})")
-
     print(f"Accuracy Range: [{min(fold_accuracies):.3f}, {max(fold_accuracies):.3f}]")
 
     # Display comprehensive performance metrics across all folds
     print("\nComprehensive Performance Metrics (Across All CV Folds):")
     print_performance_metrics(np.array(fold_true_labels), np.array(fold_predictions))
-
-    # NEW: Display advanced metrics if available
-    if HAS_METRICS:
-        print("\n" + "="*70)
-        print("ADVANCED METRICS ANALYSIS")
-        print("="*70)
-        
-        # Generate feature names for Iteration 1
-        n_channels = features.shape[1] // 16  # Assuming 16 features per channel
-        feature_names = generate_iteration1_feature_names(n_channels=max(1, n_channels))
-        
-        # Ensure feature_names matches actual feature count
-        if len(feature_names) != features.shape[1]:
-            feature_names = [f'Feature_{i}' for i in range(features.shape[1])]
-        
-        # Convert probabilities to numpy array if available
-        if len(fold_probabilities) > 0:
-            fold_probabilities_array = np.array(fold_probabilities)
-        else:
-            fold_probabilities_array = None
-        
-        # Print advanced metrics summary
-        print_advanced_metrics_summary(
-            y_true=np.array(fold_true_labels),
-            y_pred=np.array(fold_predictions),
-            y_pred_proba=fold_probabilities_array,
-            model=model_fold,  # Use last fold's model for feature importance check
-            feature_names=feature_names,
-            stage_names=['Wake', 'N1', 'N2', 'N3', 'REM']
-        )
-        
-        # NEW: Plot ROC curves if probabilities available
-        if fold_probabilities_array is not None:
-            print("\nGenerating ROC curves...")
-            roc_fig = plot_roc_curves(
-                np.array(fold_true_labels),
-                fold_probabilities_array,
-                n_classes=5,
-                stage_names=['Wake', 'N1', 'N2', 'N3', 'REM']
-            )
-            # Save figure
-            roc_fig.savefig('roc_curves_cv.png', dpi=150, bbox_inches='tight')
-            print(f"✓ ROC curves saved to: roc_curves_cv.png")
-        
-        # NEW: Plot feature importance if available
-        print("\nGenerating feature importance plot...")
-        feature_importance_dict = calculate_feature_importance(model_fold, feature_names)
-        if feature_importance_dict['available']:
-            fi_fig = plot_feature_importance(feature_importance_dict, top_n=20)
-            if fi_fig is not None:
-                fi_fig.savefig('feature_importance.png', dpi=150, bbox_inches='tight')
-                print(f"✓ Feature importance plot saved to: feature_importance.png")
-        else:
-            print("ℹ️  Feature importance not available for k-NN (Iteration 1)")
-            print("   This will be available in Iteration 3+ with Random Forest")
 
     # Train final model on ALL data for deployment/prediction
     print("\n" + "="*70)
@@ -213,7 +159,55 @@ def train_classifier(features, labels, config):
     final_model.fit(features, labels)
     print("Final model training complete!")
 
-    return final_model
+    # Generate feature names
+    n_channels = features.shape[1] // 16  # Assuming 16 features per channel
+    if HAS_METRICS:
+        feature_names = generate_iteration1_feature_names(n_channels=max(1, n_channels))
+        # Ensure feature_names matches actual feature count
+        if len(feature_names) != features.shape[1]:
+            feature_names = [f'Feature_{i}' for i in range(features.shape[1])]
+    else:
+        feature_names = [f'Feature_{i}' for i in range(features.shape[1])]
+
+    # Collect all metrics into a dictionary
+    metrics_dict = {
+        'cv_results': {
+            'fold_accuracies': fold_accuracies,
+            'fold_f1_scores': fold_f1_scores,
+            'fold_kappa_scores': fold_kappa_scores,
+            'mean_accuracy': mean_accuracy,
+            'std_accuracy': std_accuracy,
+            'mean_f1': mean_f1,
+            'std_f1': std_f1,
+            'mean_kappa': mean_kappa,
+            'std_kappa': std_kappa
+        },
+        'all_predictions': np.array(fold_predictions),
+        'all_true_labels': np.array(fold_true_labels),
+        'probabilities': np.array(fold_probabilities) if len(fold_probabilities) > 0 else None,
+        'confusion_matrix': confusion_matrix(np.array(fold_true_labels), np.array(fold_predictions)),
+        'feature_names': feature_names,
+        'n_features': features.shape[1],
+        'n_samples': features.shape[0],
+        'classifier_type': config.CLASSIFIER_TYPE,
+        'iteration': config.CURRENT_ITERATION
+    }
+    
+    # Add advanced metrics if available
+    if HAS_METRICS:
+        metrics_dict['cohens_kappa'] = calculate_cohens_kappa(
+            np.array(fold_true_labels), 
+            np.array(fold_predictions)
+        )
+        
+        if metrics_dict['probabilities'] is not None:
+            metrics_dict['roc_auc'] = calculate_multiclass_roc_auc(
+                np.array(fold_true_labels),
+                metrics_dict['probabilities'],
+                n_classes=5
+            )
+    
+    return final_model, metrics_dict
 
 
 def print_performance_metrics(y_true, y_pred):
@@ -222,7 +216,6 @@ def print_performance_metrics(y_true, y_pred):
 
     Includes accuracy, sensitivity (recall), specificity, and F1-score for each sleep stage.
     """
-
     # Sleep stage labels and names (0=Wake, 1=N1, 2=N2, 3=N3, 4=REM)
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
