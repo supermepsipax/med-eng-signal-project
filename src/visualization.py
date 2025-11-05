@@ -15,9 +15,10 @@ except ImportError:
     except ImportError:
         HAS_PYEDFLIB = False
 
+
 def plot_confusion_matrix(y_true, y_pred, class_names):
     """
-    Plots a confusion matrix.
+    Plots and saves a confusion matrix.
 
     Args:
         y_true (np.ndarray): The true labels.
@@ -28,7 +29,70 @@ def plot_confusion_matrix(y_true, y_pred, class_names):
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
     disp.plot()
     plt.title("Confusion Matrix")
+    plt.savefig('confusion_matrix.png', dpi=150, bbox_inches='tight')
     plt.show()
+
+
+def visualize_results(model, features, labels, config):
+    """
+    Visualizes the basic classification results.
+
+    Args:
+        model (object): The trained model.
+        features (np.ndarray): The input features.
+        labels (np.ndarray): The corresponding labels.
+        config (module): The configuration module.
+    """
+    print("Visualizing results...")
+    class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    y_pred = model.predict(features)
+    plot_confusion_matrix(labels, y_pred, class_names)
+
+
+def visualize_advanced_metrics(metrics_dict, config):
+    """
+    Generate all advanced visualizations from metrics dictionary.
+    
+    Creates ROC curves and feature importance plots based on available metrics.
+    
+    Args:
+        metrics_dict (dict): Dictionary containing all metrics from training
+        config: Configuration module
+    """
+    # Import metrics functions
+    try:
+        from src.metrics import plot_roc_curves, calculate_feature_importance, plot_feature_importance
+        HAS_METRICS = True
+    except ImportError:
+        return
+    
+    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    
+    # 1. Plot ROC curves if probabilities available
+    if metrics_dict.get('probabilities') is not None:
+        roc_fig = plot_roc_curves(
+            metrics_dict['all_true_labels'],
+            metrics_dict['probabilities'],
+            n_classes=5,
+            stage_names=stage_names
+        )
+        if roc_fig is not None:
+            roc_fig.savefig('roc_curves_cv.png', dpi=150, bbox_inches='tight')
+            plt.close(roc_fig)
+    
+    # 2. Plot feature importance if available (Random Forest only)
+    if config.CURRENT_ITERATION >= 3:
+        feature_importance_dict = calculate_feature_importance(
+            metrics_dict.get('model'),
+            metrics_dict.get('feature_names')
+        )
+        
+        if feature_importance_dict['available']:
+            fi_fig = plot_feature_importance(feature_importance_dict, top_n=20)
+            if fi_fig is not None:
+                fi_fig.savefig('feature_importance.png', dpi=150, bbox_inches='tight')
+                plt.close(fi_fig)
+
 
 def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
     """
@@ -45,26 +109,20 @@ def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
         return
 
     try:
-        # Reset matplotlib to defaults
         import matplotlib
         matplotlib.rcdefaults()
 
-        # Calculate epoch boundaries
         start_time = epoch_idx * epoch_duration
 
         if HAS_MNE:
-            # Use MNE (more lenient with EDF format issues)
             raw = mne.io.read_raw_edf(edf_path, preload=True, stim_channel=None, verbose=False)
-
             n_channels = len(raw.ch_names)
             channel_labels = raw.ch_names
 
-            # Extract data for this epoch
             start_sample = int(start_time * raw.info['sfreq'])
             stop_sample = int((start_time + epoch_duration) * raw.info['sfreq'])
 
-            # Convert from Volts to microvolts for better visualization
-            # MNE loads data in Volts by default
+            # Convert from Volts to microvolts
             data_all = raw[:, start_sample:stop_sample][0] * 1e6
             times = np.arange(data_all.shape[1]) / raw.info['sfreq'] + start_time
 
@@ -83,11 +141,10 @@ def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
                     signal = edf.readSignal(ch_idx, start=start_sample, n=n_samples)
                     data_all.append(signal)
 
-                # Create time axis
                 max_samples = max(len(d) for d in data_all)
                 times = np.linspace(start_time, start_time + epoch_duration, max_samples)
 
-        # Create subplots - EXACTLY like the diagnostic plot that worked
+        # Create subplots
         fig, axes = plt.subplots(n_channels, 1, figsize=(14, 2*n_channels),
                                 facecolor='white', edgecolor='black')
         if n_channels == 1:
@@ -104,10 +161,7 @@ def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
             else:
                 signal = data_all[ch_idx]
 
-            # Set white background for subplot - EXACTLY like diagnostic
             axes[ch_idx].set_facecolor('white')
-
-            # Plot with VERY visible settings - EXACTLY like diagnostic
             axes[ch_idx].plot(times, signal, 'b-', linewidth=2.0, solid_capstyle='round')
 
             # Add unit to ylabel for bio-signal channels
@@ -120,11 +174,9 @@ def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
             axes[ch_idx].grid(True, color='gray', alpha=0.4, linestyle='-', linewidth=0.5)
             axes[ch_idx].set_xlim(times[0], times[-1])
 
-            # Explicit y-limits - EXACTLY like diagnostic
             y_margin = (signal.max() - signal.min()) * 0.15
             axes[ch_idx].set_ylim(signal.min() - y_margin, signal.max() + y_margin)
 
-            # Add text showing we have data - EXACTLY like diagnostic
             axes[ch_idx].text(0.98, 0.95, f'n={len(signal)}', transform=axes[ch_idx].transAxes,
                             ha='right', va='top', fontsize=8,
                             bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
@@ -137,7 +189,6 @@ def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
 
         plt.tight_layout()
 
-        # Save figure explicitly before showing
         output_path = f"epoch{epoch_idx}_signals.png"
         plt.savefig(output_path, dpi=100, facecolor='white', edgecolor='black', bbox_inches='tight')
         print(f"\n✓ Saved to {output_path}")
@@ -151,6 +202,7 @@ def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
         import traceback
         traceback.print_exc()
 
+
 def plot_hypnogram(xml_path, edf_path=None):
     """
     Plot hypnogram (sleep stage progression) from XML annotations.
@@ -160,15 +212,11 @@ def plot_hypnogram(xml_path, edf_path=None):
         edf_path (str, optional): Path to EDF file to get recording duration.
     """
     try:
-        # Parse XML file
         tree = ET.parse(xml_path)
         root = tree.getroot()
 
-        # Extract sleep stages and times
         epochs = []
-        stages = []
 
-        # Try different XML structures (Compumedics format)
         for event in root.findall('.//ScoredEvent'):
             event_concept = event.find('EventConcept')
             start = event.find('Start')
@@ -178,9 +226,6 @@ def plot_hypnogram(xml_path, edf_path=None):
                 stage_name = event_concept.text
 
                 # Check if this is a sleep stage event
-                # Formats: SDO:WakeState, SDO:NonRapidEyeMovementSleep-N1, SDO:RapidEyeMovementSleep
-                # Also support older formats: Wake|0, Stage1|1, etc.
-                # Exclude arousal events and other non-stage events
                 is_sleep_stage = False
                 if 'WakeState' in stage_name or 'RapidEyeMovementSleep' in stage_name or 'NonRapidEyeMovementSleep' in stage_name:
                     is_sleep_stage = True
@@ -195,9 +240,8 @@ def plot_hypnogram(xml_path, edf_path=None):
                     start_time = float(start.text)
                     dur = float(duration.text) if duration is not None else 30.0
 
-                    # Map stage names to numeric labels (0=Wake, 1=N1, 2=N2, 3=N3, 4=REM)
+                    # Map stage names to numeric labels
                     stage_label = None
-
                     if 'WakeState' in stage_name or stage_name == 'Wake' or 'Wake|0' in stage_name:
                         stage_label = 0
                     elif 'N1' in stage_name or 'Stage1' in stage_name or '|1' in stage_name:
@@ -210,7 +254,6 @@ def plot_hypnogram(xml_path, edf_path=None):
                         stage_label = 4
 
                     if stage_label is not None:
-                        # Store start time, duration, and stage label
                         epochs.append((start_time, dur, stage_label))
 
         if not epochs:
@@ -218,28 +261,22 @@ def plot_hypnogram(xml_path, edf_path=None):
             print("The XML file may be in a different format or empty")
             return
 
-        # Sort epochs by start time
         epochs = sorted(epochs, key=lambda x: x[0])
 
-        # Create hypnogram plot
         fig, ax = plt.subplots(figsize=(15, 5))
 
-        # Plot as step function
         stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
         stage_colors = ['red', 'orange', 'green', 'blue', 'purple']
 
-        # Create step plot - each event has (start_time, duration, stage_label)
         for start_time, duration, stage_label in epochs:
             start_epoch = start_time / 30.0
             end_epoch = (start_time + duration) / 30.0
             ax.hlines(stage_label, start_epoch, end_epoch,
                      colors=stage_colors[int(stage_label)], linewidth=2)
 
-        # Extract stages for statistics
         stages = np.array([e[2] for e in epochs])
         total_duration = sum(e[1] for e in epochs)
 
-        # Styling
         ax.set_yticks(range(5))
         ax.set_yticklabels(stage_names)
         ax.set_ylabel('Sleep Stage', fontsize=12, fontweight='bold')
@@ -252,9 +289,8 @@ def plot_hypnogram(xml_path, edf_path=None):
         ax2 = ax.twiny()
         ax2.set_xlim(ax.get_xlim())
         ax2.set_xlabel('Time (hours)', fontsize=12, fontweight='bold')
-        # Convert epochs to hours
-        max_epoch = (epochs[-1][0] + epochs[-1][1]) / 30.0  # Last event end time
-        hour_ticks = np.arange(0, max_epoch, 120)  # 120 epochs = 1 hour
+        max_epoch = (epochs[-1][0] + epochs[-1][1]) / 30.0
+        hour_ticks = np.arange(0, max_epoch, 120)
         ax2.set_xticks(hour_ticks)
         ax2.set_xticklabels([f'{h/120:.1f}' for h in hour_ticks])
 
@@ -269,7 +305,6 @@ def plot_hypnogram(xml_path, edf_path=None):
         print(f"Total epochs: {int(total_duration/30)}")
         print("\nStage distribution:")
         for stage_idx, stage_name in enumerate(stage_names):
-            # Count events and calculate total duration for this stage
             stage_events = [e for e in epochs if e[2] == stage_idx]
             count = len(stage_events)
             stage_duration = sum(e[1] for e in stage_events)
@@ -283,19 +318,3 @@ def plot_hypnogram(xml_path, edf_path=None):
         print(f"Error reading XML file: {str(e)}")
         import traceback
         traceback.print_exc()
-
-def visualize_results(model, features, labels, config):
-    """
-    Visualizes the results of the classification.
-
-    Args:
-        model (object): The trained model.
-        features (np.ndarray): The input features.
-        labels (np.ndarray): The corresponding labels.
-        config (module): The configuration module.
-    """
-    print("Visualizing results...")
-    # TODO: Add more visualizations as needed (e.g., feature importance).
-    class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    y_pred = model.predict(features)
-    plot_confusion_matrix(labels, y_pred, class_names)

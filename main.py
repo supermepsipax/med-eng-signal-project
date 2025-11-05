@@ -4,7 +4,7 @@ from src.preprocessing import preprocess
 from src.feature_extraction import extract_features
 from src.feature_selection import select_features
 from src.classification import train_classifier
-from src.visualization import visualize_results
+from src.visualization import visualize_results, visualize_advanced_metrics
 from src.report import generate_report
 from src.utils import save_cache, load_cache
 import os
@@ -14,24 +14,20 @@ import numpy as np
 
 
 def main():
-    # # Create a string buffer
-    # stdout_buffer = io.StringIO()
-    #
-    # # Save the original stdout
-    # original_stdout = sys.stdout
-    #
-    # # Redirect stdout to the buffer
-    # sys.stdout = stdout_buffer 
+    # Create a string buffer to capture processing log
+    stdout_buffer = io.StringIO()
+
+    # Save the original stdout
+    original_stdout = sys.stdout
+
+    # Redirect stdout to the buffer
+    sys.stdout = stdout_buffer 
 
     print("\n=== PROCESSING LOG ===")
-
     print(f"--- Sleep Scoring Pipeline - Iteration {config.CURRENT_ITERATION} ---")
 
     # 1. Load Data
-    # Load ALL available data files from training directory
     print("\n=== STEP 1: DATA LOADING ===")
-
-    # Use the load_all_training_data function to load all recordings at once
     multi_channel_data, labels, record_ids, channel_info = load_all_training_data(
         config.TRAINING_DIR,
         epoch_length=30
@@ -72,7 +68,7 @@ def main():
             for signal_type in preprocessed_data.keys():
                 print(f"  {signal_type.upper()}: {preprocessed_data[signal_type].shape}")
         else:
-            print("Preprocessed data shape: {preprocessed_data.shape}")
+            print(f"Preprocessed data shape: {preprocessed_data.shape}")
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
             print("Saved preprocessed data to cache")
@@ -102,9 +98,12 @@ def main():
 
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
+    metrics_dict = None
     if selected_features.shape[1] > 0:
-        model = train_classifier(selected_features, labels, config)
+        model, metrics_dict = train_classifier(selected_features, labels, config)
         print(f"Trained {config.CLASSIFIER_TYPE} classifier")
+        print(f"Cross-validation accuracy: {metrics_dict['cv_results']['mean_accuracy']:.3f} "
+              f"(±{metrics_dict['cv_results']['std_accuracy']:.3f})")
     else:
         print("⚠️  WARNING: Cannot train classifier - no features available!")
         print("Students must implement feature extraction first.")
@@ -122,11 +121,17 @@ def main():
     print("\n=== STEP 6: VISUALIZATION ===")
     if model is not None:
         visualize_results(model, selected_features, labels, config)
+        print("✓ Confusion matrix saved to: confusion_matrix.png")
+        
+        # Generate advanced visualizations
+        visualize_advanced_metrics(metrics_dict, config)
+        if metrics_dict.get('probabilities') is not None:
+            print("✓ ROC curves saved to: roc_curves_cv.png")
+        if config.CURRENT_ITERATION >= 3:
+            print("  (Feature importance available in Iteration 3+ with Random Forest)")
     else:
         print("Skipping visualization - no trained model")
-
-    # 7. Report Generation
-    print("\n=== STEP 7: PROCESSING LOG & REPORT GENERATION ===")
+       
 
     # Restore the original stdout
     sys.stdout = original_stdout
@@ -135,9 +140,18 @@ def main():
     processing_log = stdout_buffer.getvalue()   
      
     if model is not None:
-        generate_report(model, selected_features, labels, config, processing_log)
+        generate_report(model, selected_features, labels, config, processing_log, metrics_dict)
+        print("✓ Report saved to: report.txt")
+        
+        # Save model and metrics to cache
         model_filename = f"model_iter{config.CURRENT_ITERATION}.joblib"
-        save_cache(model, model_filename,config.CACHE_DIR )
+        save_cache(model, model_filename, config.CACHE_DIR)
+        print(f"✓ Model cached to: cache/{model_filename}")
+
+        metrics_filename = f"metrics_iter{config.CURRENT_ITERATION}.joblib"
+        save_cache(metrics_dict, metrics_filename, config.CACHE_DIR)
+        print(f"✓ Metrics cached to: cache/{metrics_filename}")
+        
     else:
         print("Skipping report - no trained model")
 

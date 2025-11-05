@@ -1,4 +1,3 @@
-
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
@@ -13,12 +12,7 @@ import pandas as pd
 try:
     from src.metrics import (
         calculate_cohens_kappa,
-        interpret_kappa,
         calculate_multiclass_roc_auc,
-        plot_roc_curves,
-        calculate_feature_importance,
-        plot_feature_importance,
-        print_advanced_metrics_summary,
         generate_iteration1_feature_names
     )
     HAS_METRICS = True
@@ -389,7 +383,6 @@ def print_performance_metrics(y_true, y_pred):
 
     Includes accuracy, sensitivity (recall), specificity, and F1-score for each sleep stage.
     """
-
     # Sleep stage labels and names (0=Wake, 1=N1, 2=N2, 3=N3, 4=REM)
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))

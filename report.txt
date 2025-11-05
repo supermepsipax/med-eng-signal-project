@@ -2,6 +2,8 @@
     
 === STEP 6: VISUALIZATION ===
 Visualizing results...
+✓ Confusion matrix saved to: confusion_matrix.png
+✓ ROC curves saved to: roc_curves_cv.png
 
 === STEP 7: PROCESSING LOG & REPORT GENERATION ===
 
@@ -12,11 +14,7 @@ Visualizing results...
     ## Model
     SVC
 
-    ## Performance
-    Accuracy: ...
-    Kappa: ...
-    F1-score: ...
 
-    ## Notes
-    This is a dummy report. Implement full report generation.
-    
+======================================================================
+END OF REPORT
+======================================================================
