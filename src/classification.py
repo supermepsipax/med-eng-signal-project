@@ -10,11 +10,7 @@ import pandas as pd
 
 # Import the new metrics module
 try:
-    from src.metrics import (
-        calculate_cohens_kappa,
-        calculate_multiclass_roc_auc,
-        generate_iteration1_feature_names,
-    )
+    from src.metrics import calculate_cohens_kappa
 
     HAS_METRICS = True
 except ImportError:
@@ -132,10 +128,6 @@ def train_classifier(features, labels, config):
         "n_train_samples": len(y_train),
         "n_test_samples": len(y_test),
         "n_features": features.shape[1],
-        # Compatibility fields for visualization/report (Valeria branch integration)
-        "all_true_labels": y_test,  # Alias for y_true
-        "all_predictions": y_pred,  # Alias for y_pred
-        "probabilities": y_pred_proba,  # Alias for y_pred_proba
         "n_samples": features.shape[0],  # Total samples (train + test)
         "classifier_type": config.CLASSIFIER_TYPE,
         "iteration": config.CURRENT_ITERATION,
@@ -152,32 +144,6 @@ def train_classifier(features, labels, config):
     }
 
     print_performance_metrics(y_test, y_pred)
-
-    if HAS_METRICS:
-        print("\n" + "=" * 70)
-        print("ADVANCED METRICS ANALYSIS (TEST SET)")
-        print("=" * 70)
-
-        # Generate feature names - try iteration-specific, fall back to generic
-        try:
-            n_channels = (
-                features.shape[1] // 16
-                if config.CURRENT_ITERATION == 1
-                else features.shape[1] // 31
-            )
-            feature_names = generate_iteration1_feature_names(
-                n_channels=max(1, n_channels)
-            )
-            if len(feature_names) != features.shape[1]:
-                feature_names = [f"Feature_{i}" for i in range(features.shape[1])]
-        except:
-            feature_names = [f"Feature_{i}" for i in range(features.shape[1])]
-
-        # Add feature names to metrics dict
-        metrics_dict["feature_names"] = feature_names
-
-        # y_pred_proba was already computed above with correct scaling
-
 
     return best_model, metrics_dict
 
@@ -266,19 +232,23 @@ def train_svm(X_train, y_train, config):
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
 
-        print("   Feature scaling statistics:")
+        print("   Training feature statistics (BEFORE scaling):")
         print(
-            f"     Before: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]"
+            f"     Global: min={X_train.min():.2e}, max={X_train.max():.2e}, mean={X_train.mean():.2e}"
         )
         print(
-            f"     After:  mean range [{X_train_scaled.mean(axis=0).min():.2e}, {X_train_scaled.mean(axis=0).max():.2e}]"
+            f"     Per-feature: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]"
         )
         print(
-            f"     Before: std range  [{X_train.std(axis=0).min():.2e}, {X_train.std(axis=0).max():.2e}]"
+            f"     Per-feature: std range  [{X_train.std(axis=0).min():.2e}, {X_train.std(axis=0).max():.2e}]"
         )
+        print("   Training feature statistics (AFTER scaling):")
         print(
-            f"     After:  std range  [{X_train_scaled.std(axis=0).min():.2e}, {X_train_scaled.std(axis=0).max():.2e}]"
+            f"     Global: min={X_train_scaled.min():.2e}, max={X_train_scaled.max():.2e}, mean={X_train_scaled.mean():.2e}"
         )
+        print(f"   Scaler learned from {X_train.shape[0]} training samples:")
+        print(f"     Scaler mean range: [{scaler.mean_.min():.2e}, {scaler.mean_.max():.2e}]")
+        print(f"     Scaler scale range: [{scaler.scale_.min():.2e}, {scaler.scale_.max():.2e}]")
 
         # Use class_weight='balanced' to handle class imbalance
         model = SVC(
@@ -311,13 +281,17 @@ def train_svm(X_train, y_train, config):
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
 
-        print("   Feature scaling statistics:")
+        print("   Training feature statistics (BEFORE scaling):")
         print(
-            f"     Before: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]"
+            f"     Global: min={X_train.min():.2e}, max={X_train.max():.2e}, mean={X_train.mean():.2e}"
         )
+        print("   Training feature statistics (AFTER scaling):")
         print(
-            f"     After:  mean range [{X_train_scaled.mean(axis=0).min():.2e}, {X_train_scaled.mean(axis=0).max():.2e}]"
+            f"     Global: min={X_train_scaled.min():.2e}, max={X_train_scaled.max():.2e}, mean={X_train_scaled.mean():.2e}"
         )
+        print(f"   Scaler learned from {X_train.shape[0]} training samples:")
+        print(f"     Scaler mean range: [{scaler.mean_.min():.2e}, {scaler.mean_.max():.2e}]")
+        print(f"     Scaler scale range: [{scaler.scale_.min():.2e}, {scaler.scale_.max():.2e}]")
 
         # Define hyperparameter search space
         param_grid = {

@@ -396,27 +396,27 @@ def load_all_training_data(training_dir, epoch_length=30):
 
 def load_all_holdout_data(holdout_dir, epoch_length=30):
     """
-    Load all training recordings from a directory.
+    Load all holdout recordings from a directory.
 
     Args:
-        holdout_dir (str): Path to directory containing EDF and XML files
+        holdout_dir (str): Path to directory containing EDF files
         epoch_length (float): Epoch duration in seconds (default 30)
 
     Returns:
-        tuple: (all_data, all_labels, all_record_ids, channel_info) where:
+        tuple: (all_data, all_epoch_ids, all_record_ids, channel_info) where:
             - all_data (dict): Combined multi-channel data from all recordings
-            - all_labels (np.ndarray): Concatenated labels
+            - all_epoch_ids (list): Epoch numbers for each epoch
             - all_record_ids (np.ndarray): Record ID for each epoch
-            - channel_info (dict): Channel information (same across recordings)
+            - channel_info (dict): Channel information (compatible with preprocessing)
 
     Example:
-        >>> data, labels, record_ids, info = load_all_training_data('data/training/')
-        >>> print(f"Total epochs: {len(labels)}")
+        >>> data, epoch_ids, record_ids, info = load_all_holdout_data('data/holdout/')
+        >>> print(f"Total epochs: {len(record_ids)}")
         >>> print(f"Unique recordings: {len(np.unique(record_ids))}")
     """
     from glob import glob
 
-    print(f"Loading all training data from {holdout_dir}...")
+    print(f"Loading all holdout data from {holdout_dir}...")
 
     # Find all EDF files
     edf_files = sorted(glob(os.path.join(holdout_dir, '*.edf')))
@@ -448,9 +448,15 @@ def load_all_holdout_data(holdout_dir, epoch_length=30):
                 edf_file, epoch_length
             )
 
-            # Store channel info from first recording
+            # Store channel info from first recording, converting to match training format
             if channel_info is None:
-                channel_info = info
+                # Convert holdout record_info format to training channel_info format
+                # Holdout format: {'sampling_rates': {'eeg': 125, 'eog': 50, ...}, ...}
+                # Training format: {'eeg_fs': 125, 'eog_fs': 50, ...}
+                channel_info = {'epoch_length': info['epoch_length']}
+                if 'sampling_rates' in info:
+                    for signal_type, fs in info['sampling_rates'].items():
+                        channel_info[f'{signal_type}_fs'] = fs
 
             # Append data
             if 'eeg' in multi_channel_data:
@@ -486,6 +492,7 @@ def load_all_holdout_data(holdout_dir, epoch_length=30):
 
     combined_record_ids = np.array(all_record_ids)
 
+    print(f"\nChannel info for preprocessing: {channel_info}")
 
     return combined_data, all_epoch_ids, combined_record_ids, channel_info
 
