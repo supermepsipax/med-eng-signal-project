@@ -98,10 +98,32 @@ def main():
 
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
+    model = None
     metrics_dict = None
+    model_filename = f"model_iter{config.CURRENT_ITERATION}.joblib"
+    metrics_filename = f"metrics_iter{config.CURRENT_ITERATION}.joblib"
+
     if selected_features.shape[1] > 0:
-        model, metrics_dict = train_classifier(selected_features, labels, config)
-        print(f"Trained {config.CLASSIFIER_TYPE} classifier")
+        # Try to load model and metrics from cache
+        if config.USE_CACHE:
+            model = load_cache(model_filename, config.CACHE_DIR)
+            metrics_dict = load_cache(metrics_filename, config.CACHE_DIR)
+            if model is not None and metrics_dict is not None:
+                print(f"Loaded {config.CLASSIFIER_TYPE} classifier from cache")
+                print(f"Loaded metrics from cache")
+
+        # Train if not cached
+        if model is None:
+            model, metrics_dict = train_classifier(selected_features, labels, config)
+            print(f"Trained {config.CLASSIFIER_TYPE} classifier")
+
+            # Save model and metrics to cache
+            if config.USE_CACHE:
+                save_cache(model, model_filename, config.CACHE_DIR)
+                save_cache(metrics_dict, metrics_filename, config.CACHE_DIR)
+                print("Saved model and metrics to cache")
+
+        # Display metrics
         print(f"\n📊 Final Test Metrics Summary:")
         print(f"  Accuracy: {metrics_dict['test_accuracy']:.3f}")
         print(f"  Macro F1: {metrics_dict['test_f1_macro']:.3f}")
@@ -111,43 +133,33 @@ def main():
     else:
         print("⚠️  WARNING: Cannot train classifier - no features available!")
         print("Students must implement feature extraction first.")
-        model = None
 
     # 6. Visualization
     print("\n=== STEP 6: VISUALIZATION ===")
     if model is not None:
-        visualize_results(model, selected_features, labels, config)
+        # Use test set predictions from metrics_dict for accurate confusion matrix
+        visualize_results(metrics_dict, config)
         print("✓ Confusion matrix saved to: confusion_matrix.png")
-        
+
         # Generate advanced visualizations
         visualize_advanced_metrics(metrics_dict, config)
-        if metrics_dict.get('probabilities') is not None:
+        if metrics_dict.get('y_pred_proba') is not None:
             print("✓ ROC curves saved to: roc_curves_cv.png")
         if config.CURRENT_ITERATION >= 3:
             print("  (Feature importance available in Iteration 3+ with Random Forest)")
     else:
         print("Skipping visualization - no trained model")
-       
+
 
     # Restore the original stdout
     sys.stdout = original_stdout
 
     # Get the captured output from the buffer
-    processing_log = stdout_buffer.getvalue()   
-     
+    processing_log = stdout_buffer.getvalue()
+
     if model is not None:
         generate_report(model, selected_features, labels, config, processing_log, metrics_dict)
         print("✓ Report saved to: report.txt")
-        
-        # Save model and metrics to cache
-        model_filename = f"model_iter{config.CURRENT_ITERATION}.joblib"
-        save_cache(model, model_filename, config.CACHE_DIR)
-        print(f"✓ Model cached to: cache/{model_filename}")
-
-        metrics_filename = f"metrics_iter{config.CURRENT_ITERATION}.joblib"
-        save_cache(metrics_dict, metrics_filename, config.CACHE_DIR)
-        print(f"✓ Metrics cached to: cache/{metrics_filename}")
-        
     else:
         print("Skipping report - no trained model")
 

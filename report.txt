@@ -2,7 +2,7 @@
 ======================================================================
 SLEEP SCORING REPORT - ITERATION 2
 ======================================================================
-Generated: 2025-11-05 11:33:27
+Generated: 2025-11-17 18:40:56
 
 ======================================================================
 MODEL INFORMATION
@@ -352,10 +352,6 @@ Notes for Sleep Scoring:
 - Sleep stage imbalance is natural (more N2, less N1/REM)
 - Consider Cohen's kappa for chance-corrected agreement
 - Clinical focus: High sensitivity for REM and N3 stages
-
-======================================================================
-ADVANCED METRICS ANALYSIS (TEST SET)
-======================================================================
 Trained svm classifier
 
 📊 Final Test Metrics Summary:

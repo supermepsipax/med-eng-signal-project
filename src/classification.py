@@ -10,11 +10,7 @@ import pandas as pd
 
 # Import the new metrics module
 try:
-    from src.metrics import (
-        calculate_cohens_kappa,
-        calculate_multiclass_roc_auc,
-        generate_iteration1_feature_names,
-    )
+    from src.metrics import calculate_cohens_kappa
 
     HAS_METRICS = True
 except ImportError:
@@ -132,10 +128,6 @@ def train_classifier(features, labels, config):
         "n_train_samples": len(y_train),
         "n_test_samples": len(y_test),
         "n_features": features.shape[1],
-        # Compatibility fields for visualization/report (Valeria branch integration)
-        "all_true_labels": y_test,  # Alias for y_true
-        "all_predictions": y_pred,  # Alias for y_pred
-        "probabilities": y_pred_proba,  # Alias for y_pred_proba
         "n_samples": features.shape[0],  # Total samples (train + test)
         "classifier_type": config.CLASSIFIER_TYPE,
         "iteration": config.CURRENT_ITERATION,
@@ -152,32 +144,6 @@ def train_classifier(features, labels, config):
     }
 
     print_performance_metrics(y_test, y_pred)
-
-    if HAS_METRICS:
-        print("\n" + "=" * 70)
-        print("ADVANCED METRICS ANALYSIS (TEST SET)")
-        print("=" * 70)
-
-        # Generate feature names - try iteration-specific, fall back to generic
-        try:
-            n_channels = (
-                features.shape[1] // 16
-                if config.CURRENT_ITERATION == 1
-                else features.shape[1] // 31
-            )
-            feature_names = generate_iteration1_feature_names(
-                n_channels=max(1, n_channels)
-            )
-            if len(feature_names) != features.shape[1]:
-                feature_names = [f"Feature_{i}" for i in range(features.shape[1])]
-        except:
-            feature_names = [f"Feature_{i}" for i in range(features.shape[1])]
-
-        # Add feature names to metrics dict
-        metrics_dict["feature_names"] = feature_names
-
-        # y_pred_proba was already computed above with correct scaling
-
 
     return best_model, metrics_dict
 
