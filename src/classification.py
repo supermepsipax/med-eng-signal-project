@@ -232,19 +232,23 @@ def train_svm(X_train, y_train, config):
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
 
-        print("   Feature scaling statistics:")
+        print("   Training feature statistics (BEFORE scaling):")
         print(
-            f"     Before: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]"
+            f"     Global: min={X_train.min():.2e}, max={X_train.max():.2e}, mean={X_train.mean():.2e}"
         )
         print(
-            f"     After:  mean range [{X_train_scaled.mean(axis=0).min():.2e}, {X_train_scaled.mean(axis=0).max():.2e}]"
+            f"     Per-feature: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]"
         )
         print(
-            f"     Before: std range  [{X_train.std(axis=0).min():.2e}, {X_train.std(axis=0).max():.2e}]"
+            f"     Per-feature: std range  [{X_train.std(axis=0).min():.2e}, {X_train.std(axis=0).max():.2e}]"
         )
+        print("   Training feature statistics (AFTER scaling):")
         print(
-            f"     After:  std range  [{X_train_scaled.std(axis=0).min():.2e}, {X_train_scaled.std(axis=0).max():.2e}]"
+            f"     Global: min={X_train_scaled.min():.2e}, max={X_train_scaled.max():.2e}, mean={X_train_scaled.mean():.2e}"
         )
+        print(f"   Scaler learned from {X_train.shape[0]} training samples:")
+        print(f"     Scaler mean range: [{scaler.mean_.min():.2e}, {scaler.mean_.max():.2e}]")
+        print(f"     Scaler scale range: [{scaler.scale_.min():.2e}, {scaler.scale_.max():.2e}]")
 
         # Use class_weight='balanced' to handle class imbalance
         model = SVC(
@@ -277,13 +281,17 @@ def train_svm(X_train, y_train, config):
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
 
-        print("   Feature scaling statistics:")
+        print("   Training feature statistics (BEFORE scaling):")
         print(
-            f"     Before: mean range [{X_train.mean(axis=0).min():.2e}, {X_train.mean(axis=0).max():.2e}]"
+            f"     Global: min={X_train.min():.2e}, max={X_train.max():.2e}, mean={X_train.mean():.2e}"
         )
+        print("   Training feature statistics (AFTER scaling):")
         print(
-            f"     After:  mean range [{X_train_scaled.mean(axis=0).min():.2e}, {X_train_scaled.mean(axis=0).max():.2e}]"
+            f"     Global: min={X_train_scaled.min():.2e}, max={X_train_scaled.max():.2e}, mean={X_train_scaled.mean():.2e}"
         )
+        print(f"   Scaler learned from {X_train.shape[0]} training samples:")
+        print(f"     Scaler mean range: [{scaler.mean_.min():.2e}, {scaler.mean_.max():.2e}]")
+        print(f"     Scaler scale range: [{scaler.scale_.min():.2e}, {scaler.scale_.max():.2e}]")
 
         # Define hyperparameter search space
         param_grid = {

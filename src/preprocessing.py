@@ -160,7 +160,8 @@ def preprocess_multi_channel(multi_channel_data, channel_info, config):
             for epoch in range(eog_data.shape[0]):
                 signal = eog_data[epoch, ch, :]
                 # EOG may need different filter settings (preserve slow eye movements)
-                filtered_signal = lowpass_filter(signal, 30, eog_fs)  # Lower cutoff for EOG
+                # Cutoff must be < Nyquist frequency (eog_fs/2 = 25 Hz for 50 Hz sampling)
+                filtered_signal = lowpass_filter(signal, 20, eog_fs)  # Lower cutoff for EOG
                 preprocessed_eog[epoch, ch, :] = filtered_signal
 
         preprocessed_data['eog'] = preprocessed_eog
@@ -175,7 +176,8 @@ def preprocess_multi_channel(multi_channel_data, channel_info, config):
         for epoch in range(emg_data.shape[0]):
             signal = emg_data[epoch, 0, :]
             # EMG needs higher frequency content preserved (muscle activity)
-            filtered_signal = lowpass_filter(signal, 70, emg_fs)  # Higher cutoff for EMG
+            # Cutoff must be < Nyquist frequency (emg_fs/2 = 62.5 Hz for 125 Hz sampling)
+            filtered_signal = lowpass_filter(signal, 60, emg_fs)  # Higher cutoff for EMG
             preprocessed_emg[epoch, 0, :] = filtered_signal
 
         preprocessed_data['emg'] = preprocessed_emg

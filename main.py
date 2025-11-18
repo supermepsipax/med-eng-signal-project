@@ -117,11 +117,11 @@ def main():
             model, metrics_dict = train_classifier(selected_features, labels, config)
             print(f"Trained {config.CLASSIFIER_TYPE} classifier")
 
-            # Save model and metrics to cache
-            if config.USE_CACHE:
-                save_cache(model, model_filename, config.CACHE_DIR)
-                save_cache(metrics_dict, metrics_filename, config.CACHE_DIR)
-                print("Saved model and metrics to cache")
+        # ALWAYS save model and metrics (regardless of cache settings)
+        print(f"\nSaving model and metrics to {config.CACHE_DIR}...")
+        save_cache(model, model_filename, config.CACHE_DIR)
+        save_cache(metrics_dict, metrics_filename, config.CACHE_DIR)
+        print(f"✓ Saved {model_filename} and {metrics_filename}")
 
         # Display metrics
         print(f"\n📊 Final Test Metrics Summary:")

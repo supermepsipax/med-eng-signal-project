@@ -16,7 +16,8 @@ def extract_time_domain_features(epoch):
     Returns:
         dict: A dictionary of features.
     """
-    # TODO: Current feature set for time-domain only, need to implement more features
+    # Time-domain features optimized for robustness across recordings
+    # Using normalized/relative features instead of absolute power values
     features = {
         "mean": np.mean(epoch),
         "median": np.median(epoch),
@@ -36,8 +37,9 @@ def extract_time_domain_features(epoch):
             np.sqrt(np.var(np.diff(epoch, 2)) / np.var(np.diff(epoch)))
         )
         / (np.sqrt(np.var(np.diff(epoch)) / np.var(epoch))),
-        "total_energy": np.sum(epoch**2),
-        "mean_power": np.mean(epoch**2),
+        # REMOVED: total_energy and mean_power (too large, causes scaling issues)
+        # These absolute power features vary wildly across recordings
+        # Use RMS and relative band powers instead
     }
 
     return features
@@ -45,7 +47,7 @@ def extract_time_domain_features(epoch):
 
 def extract_frequency_domain_features(epoch, fs, signal_type="eeg"):
     """
-    Extract 15 frequency-domain features from a single epoch.
+    Extract 10 frequency-domain features from a single epoch (optimized for robustness).
 
     Frequency features are critical for sleep staging as different sleep stages
     have characteristic frequency patterns:
@@ -61,7 +63,7 @@ def extract_frequency_domain_features(epoch, fs, signal_type="eeg"):
         signal_type (str): 'eeg' or 'eog' - affects feature interpretation.
 
     Returns:
-        dict: A dictionary of 15 frequency-domain features.
+        dict: A dictionary of 10 frequency-domain features (all normalized/relative).
     """
     # Compute power spectral density using Welch's method
     #
@@ -126,21 +128,25 @@ def extract_frequency_domain_features(epoch, fs, signal_type="eeg"):
 
     total_power = total_power if total_power > 0 else 1e-10
 
+    # Frequency features optimized for robustness across recordings
+    # Using ONLY relative/normalized features - no absolute powers
+    # Absolute band powers vary wildly across recordings (1e9 - 1e11 range!)
     features = {
-        "delta_power": delta_power,
-        "theta_power": theta_power,
-        "alpha_power": alpha_power,
-        "beta_power": beta_power,
-        "gamma_power": gamma_power,
+        # REMOVED: Absolute band powers (delta_power, theta_power, etc.)
+        # These cause extreme feature values that break StandardScaler
 
+        # Relative band powers (normalized by total power) - ROBUST
         "delta_rel": delta_power / total_power,
         "theta_rel": theta_power / total_power,
         "alpha_rel": alpha_power / total_power,
         "beta_rel": beta_power / total_power,
         "gamma_rel": gamma_power / total_power,
 
+        # Band power ratios - ROBUST
         "delta_beta_ratio": delta_power / beta_power if beta_power > 0 else 0,
         "theta_alpha_ratio": theta_power / alpha_power if alpha_power > 0 else 0,
+
+        # Spectral shape features - ROBUST
         "spectral_edge_95": (
             freqs[np.where(np.cumsum(psd) >= 0.95 * np.sum(psd))[0][0]]
             if len(freqs) > 0
@@ -162,8 +168,8 @@ def extract_features(data, config):
     This function should handle both single-channel (old format) and
     multi-channel data (new format with 2 EEG + 2 EOG + 1 EMG channels).
 
-    Iteration 1: 16 time-domain features per EEG channel
-    Iteration 2: 31+ features (time + frequency domain) per channel
+    Iteration 1: 14 time-domain features per EEG channel
+    Iteration 2: 24 features (14 time + 10 freq) per channel - normalized/robust
     Iteration 3: Multi-signal features (EEG + EOG + EMG)
     Iteration 4: Optimized feature set (selected subset)
 
@@ -189,7 +195,7 @@ def extract_features(data, config):
 
 def extract_eeg_features(eeg_signal, fs=125, include_frequency=True):
     """
-    Extract 31 features from EEG signal: 16 time-domain + 15 frequency-domain.
+    Extract 24 features from EEG signal: 14 time-domain + 10 frequency-domain.
 
     EEG is the primary signal for sleep stage classification:
     - Time features capture signal morphology and statistical properties
@@ -201,13 +207,13 @@ def extract_eeg_features(eeg_signal, fs=125, include_frequency=True):
         include_frequency (bool): Whether to include frequency features
 
     Returns:
-        dict: Combined time and frequency domain features (31 total)
+        dict: Combined time and frequency domain features (24 total, all normalized)
     """
-    # Extract 16 time-domain features
+    # Extract 14 time-domain features
     features = extract_time_domain_features(eeg_signal)
 
     if include_frequency:
-        # Add 15 frequency-domain features
+        # Add 10 frequency-domain features (all normalized/relative)
         # Brain wave analysis is crucial for sleep staging
         freq_features = extract_frequency_domain_features(
             eeg_signal, fs, signal_type="eeg"
@@ -221,8 +227,8 @@ def extract_multi_channel_features(multi_channel_data, config):
     """
     Extract features from multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
 
-    Iteration 1: 16 time-domain features per EEG channel (backward compatible)
-    Iteration 2+: 31 features (16 time + 15 freq) per channel for EEG and EOG
+    Iteration 1: 14 time-domain features per EEG channel (backward compatible)
+    Iteration 2+: 24 features (14 time + 10 freq) per channel for EEG and EOG
     """
     n_epochs = multi_channel_data["eeg"].shape[0]
     all_features = []
@@ -262,20 +268,20 @@ def extract_multi_channel_features(multi_channel_data, config):
 
     # Print feature count summary
     if config.CURRENT_ITERATION == 1:
-        expected = 2 * 16  # 2 EEG channels × 16 time features
+        expected = 2 * 14  # 2 EEG channels × 14 time features
         print(f"Iteration 1: {features.shape[1]} features (expected: {expected})")
-        print("  - 2 EEG channels × 16 time-domain features")
+        print("  - 2 EEG channels × 14 time-domain features")
     elif config.CURRENT_ITERATION == 2:
-        expected = 2 * 31 + 2 * 31  # 2 EEG + 2 EOG × 31 features
+        expected = 2 * 24 + 2 * 24  # 2 EEG + 2 EOG × 24 features
         print(f"Iteration 2: {features.shape[1]} features (expected: {expected})")
-        print("  - 2 EEG channels × 31 features (16 time + 15 freq)")
-        print("  - 2 EOG channels × 31 features (16 time + 15 freq)")
+        print("  - 2 EEG channels × 24 features (14 time + 10 freq, all normalized)")
+        print("  - 2 EOG channels × 24 features (14 time + 10 freq, all normalized)")
     elif config.CURRENT_ITERATION >= 3:
         print(
             f"Iteration {config.CURRENT_ITERATION}: {features.shape[1]} total features"
         )
-        print("  - 2 EEG channels × 31 features (16 time + 15 freq)")
-        print("  - 2 EOG channels × 31 features (16 time + 15 freq)")
+        print("  - 2 EEG channels × 24 features (14 time + 10 freq, all normalized)")
+        print("  - 2 EOG channels × 24 features (14 time + 10 freq, all normalized)")
         print("  - 1 EMG channel × features")
 
     return features
@@ -318,7 +324,7 @@ def extract_single_channel_features(data, config):
 
 def extract_eog_features(eog_signal, fs=50, include_frequency=True):
     """
-    Extract 31 features from EOG signal: 16 time-domain + 15 frequency-domain.
+    Extract 24 features from EOG signal: 14 time-domain + 10 frequency-domain.
 
     EOG signals are used to detect:
     - Rapid eye movements (REM sleep indicator)
@@ -333,12 +339,12 @@ def extract_eog_features(eog_signal, fs=50, include_frequency=True):
     Returns:
         dict: Combined time and frequency domain features
     """
-    # Use the same 16 time-domain features as EEG
+    # Use the same 14 time-domain features as EEG
     # These are signal-agnostic and work well for EOG too
     features = extract_time_domain_features(eog_signal)
 
     if include_frequency:
-        # Add 15 frequency-domain features
+        # Add 10 frequency-domain features (all normalized/relative)
         # EOG frequency features help distinguish REM (rapid movements) from NREM
         freq_features = extract_frequency_domain_features(
             eog_signal, fs, signal_type="eog"

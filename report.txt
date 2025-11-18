@@ -2,33 +2,33 @@
 ======================================================================
 SLEEP SCORING REPORT - ITERATION 2
 ======================================================================
-Generated: 2025-11-17 18:40:56
+Generated: 2025-11-18 14:20:06
 
 ======================================================================
 MODEL INFORMATION
 ======================================================================
 Model Type: SVC
 Classifier: SVM
-Number of Features: 124
+Number of Features: 96
 Number of Samples: 10293 epochs
 
 ======================================================================
 PERFORMANCE METRICS
 ======================================================================
-Accuracy:      0.8082 (± 0.0000)
-Kappa:         0.7423 (± 0.0000)
-F1-Score:      0.7280 (± 0.0000)
+Accuracy:      0.8145 (± 0.0000)
+Kappa:         0.7493 (± 0.0000)
+F1-Score:      0.7292 (± 0.0000)
 
 ======================================================================
 CONFUSION MATRIX
 ======================================================================
 Predicted →
 Actual ↓      Wake      N1      N2      N3     REM
-Wake           568      94      18       1      14
-N1              11      38       3       0       3
-N2              11      62     570      88      31
-N3               0       0      17     307       0
-REM              3      16      22       1     181
+Wake           581      81      19       1      13
+N1              15      34       3       0       3
+N2              13      52     573      87      37
+N3               0       0      16     308       0
+REM              8      10      23       1     181
 
 ======================================================================
 DETAILED PROCESSING LOG
@@ -257,21 +257,21 @@ Preprocessed multi-channel data:
 === STEP 3: FEATURE EXTRACTION ===
 Extracting features for iteration 2...
 Processing multi-channel data (EEG + EOG + EMG)
-Iteration 2: 124 features (expected: 124)
-  - 2 EEG channels × 31 features (16 time + 15 freq)
-  - 2 EOG channels × 31 features (16 time + 15 freq)
-Extracted features shape: (10293, 124)
+Iteration 2: 96 features (expected: 96)
+  - 2 EEG channels × 24 features (14 time + 10 freq, all normalized)
+  - 2 EOG channels × 24 features (14 time + 10 freq, all normalized)
+Extracted features shape: (10293, 96)
 
 === STEP 4: FEATURE SELECTION ===
 Selecting features for iteration 2...
-Input features shape: (10293, 124)
+Input features shape: (10293, 96)
 Early iteration - using all available features
-Selected features shape: (10293, 124)
-Selected features shape: (10293, 124)
+Selected features shape: (10293, 96)
+Selected features shape: (10293, 96)
 
 === STEP 5: CLASSIFICATION ===
 Training classifier for Iteration 2...
-Features shape: (10293, 124), Labels shape: (10293,)
+Features shape: (10293, 96), Labels shape: (10293,)
 
 ======================================================================
 DATA SPLIT
@@ -294,49 +294,53 @@ Training single SVM model with fixed parameters:
   (Set SVM_TUNE_HYPERPARAMS=True in config to enable hyperparameter tuning)
 
 ⚙️  Applying StandardScaler (CRITICAL for SVM performance)...
-   Feature scaling statistics:
-     Before: mean range [-8.92e-05, 1.66e+08]
-     After:  mean range [-5.61e-15, 1.78e-14]
-     Before: std range  [0.00e+00, 3.33e+08]
-     After:  std range  [0.00e+00, 1.00e+00]
+   Training feature statistics (BEFORE scaling):
+     Global: min=-4.94e+00, max=9.34e+10, mean=1.63e+08
+     Per-feature: mean range [-8.52e-05, 7.87e+09]
+     Per-feature: std range  [0.00e+00, 8.38e+09]
+   Training feature statistics (AFTER scaling):
+     Global: min=-1.16e+01, max=2.37e+01, mean=6.55e-16
+   Scaler learned from 8234 training samples:
+     Scaler mean range: [-8.52e-05, 7.87e+09]
+     Scaler scale range: [1.12e-10, 8.38e+09]
 
 Training model on full training set...
   Training samples: 8234
-  Features: 124
+  Features: 96
 ✓ Training complete
 
 ======================================================================
 FINAL EVALUATION ON HELD-OUT TEST SET
 ======================================================================
 Applying StandardScaler to test set...
-Test Accuracy: 0.808
-Test Macro F1: 0.728
-Test Cohen's Kappa: 0.742
+Test Accuracy: 0.814
+Test Macro F1: 0.729
+Test Cohen's Kappa: 0.749
 
 ======================================================================
 SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
 ======================================================================
-Overall Accuracy: 0.808
-Macro F1-Score: 0.728
-Weighted F1-Score: 0.829
+Overall Accuracy: 0.814
+Macro F1-Score: 0.729
+Weighted F1-Score: 0.831
 
 Confusion Matrix:
       Wake  N1   N2   N3  REM
-Wake   568  94   18    1   14
-N1      11  38    3    0    3
-N2      11  62  570   88   31
-N3       0   0   17  307    0
-REM      3  16   22    1  181
+Wake   581  81   19    1   13
+N1      15  34    3    0    3
+N2      13  52  573   87   37
+N3       0   0   16  308    0
+REM      8  10   23    1  181
 
 Per-Class Performance Metrics:
 ----------------------------------------------------------------------
 Stage    Accuracy   Sensitivity  Specificity  F1-Score  
 ----------------------------------------------------------------------
-Wake     0.817      0.817        0.982        0.882     
-N1       0.691      0.691        0.914        0.287     
-N2       0.748      0.748        0.954        0.819     
-N3       0.948      0.948        0.948        0.852     
-REM      0.812      0.812        0.974        0.801     
+Wake     0.836      0.836        0.974        0.886     
+N1       0.618      0.618        0.929        0.293     
+N2       0.752      0.752        0.953        0.821     
+N3       0.951      0.951        0.949        0.854     
+REM      0.812      0.812        0.971        0.792     
 ----------------------------------------------------------------------
 
 Class Distribution in Test Set:
@@ -354,11 +358,16 @@ Notes for Sleep Scoring:
 - Clinical focus: High sensitivity for REM and N3 stages
 Trained svm classifier
 
+Saving model and metrics to cache/...
+Data cached to cache/model_iter2.joblib
+Data cached to cache/metrics_iter2.joblib
+✓ Saved model_iter2.joblib and metrics_iter2.joblib
+
 📊 Final Test Metrics Summary:
-  Accuracy: 0.808
-  Macro F1: 0.728
-  Weighted F1: 0.829
-  Cohen's Kappa: 0.742
+  Accuracy: 0.814
+  Macro F1: 0.729
+  Weighted F1: 0.831
+  Cohen's Kappa: 0.749
 
 === STEP 6: VISUALIZATION ===
 Visualizing results...
