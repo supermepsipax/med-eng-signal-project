@@ -7,6 +7,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+#no cached files as some can be quite large
+*.joblib
+
 # C extensions
 *.so
 
