@@ -61,7 +61,7 @@ def main():
             print("Loaded preprocessed data from cache")
 
     if preprocessed_data is None:
-        preprocessed_data = preprocess(multi_channel_data, channel_info, config)
+        preprocessed_data = preprocess(multi_channel_data, channel_info, config, record_ids)
         # Display preprocessed data info
         if isinstance(preprocessed_data, dict):
             print("Preprocessed multi-channel data:")
@@ -76,24 +76,31 @@ def main():
     # 3. Feature Extraction
     print("\n=== STEP 3: FEATURE EXTRACTION ===")
     features = None
+    feature_names = None
     cache_filename_features = f"features_iter{config.CURRENT_ITERATION}.joblib"
+    cache_filename_names = f"feature_names_iter{config.CURRENT_ITERATION}.joblib"
     if config.USE_CACHE:
         features = load_cache(cache_filename_features, config.CACHE_DIR)
-        if features is not None:
-            print("Loaded features from cache")
+        feature_names = load_cache(cache_filename_names, config.CACHE_DIR)
+        if features is not None and feature_names is not None:
+            print("Loaded features and feature names from cache")
 
     if features is None:
-        features = extract_features(preprocessed_data, config)
+        features, feature_names = extract_features(preprocessed_data, config, channel_info)
         print(f"Extracted features shape: {features.shape}")
+        print(f"Feature names: {len(feature_names)} features")
         if features.shape[1] == 0:
             print("⚠️  WARNING: No features extracted! Students must implement feature extraction.")
         if config.USE_CACHE:
             save_cache(features, cache_filename_features, config.CACHE_DIR)
-            print("Saved features to cache")
+            save_cache(feature_names, cache_filename_names, config.CACHE_DIR)
+            print("Saved features and feature names to cache")
 
     # 4. Feature Selection
     print("\n=== STEP 4: FEATURE SELECTION ===")
-    selected_features = select_features(features, labels, config)
+    selected_features, selector_info, selection_report = select_features(
+        features, labels, config, feature_names=feature_names
+    )
     print(f"Selected features shape: {selected_features.shape}")
 
     # 5. Classification
@@ -102,6 +109,7 @@ def main():
     metrics_dict = None
     model_filename = f"model_iter{config.CURRENT_ITERATION}.joblib"
     metrics_filename = f"metrics_iter{config.CURRENT_ITERATION}.joblib"
+    selector_filename = f"selector_info_iter{config.CURRENT_ITERATION}.joblib"
 
     if selected_features.shape[1] > 0:
         # Try to load model and metrics from cache
@@ -114,14 +122,32 @@ def main():
 
         # Train if not cached
         if model is None:
-            model, metrics_dict = train_classifier(selected_features, labels, config)
+            model, metrics_dict = train_classifier(
+                selected_features,
+                labels,
+                config,
+                record_ids=record_ids  # Pass record_ids for subject-wise CV
+            )
             print(f"Trained {config.CLASSIFIER_TYPE} classifier")
 
-        # ALWAYS save model and metrics (regardless of cache settings)
-        print(f"\nSaving model and metrics to {config.CACHE_DIR}...")
+        # ALWAYS save model, metrics, and selector info (regardless of cache settings)
+        print(f"\nSaving model, metrics, and feature selector to {config.CACHE_DIR}...")
         save_cache(model, model_filename, config.CACHE_DIR)
         save_cache(metrics_dict, metrics_filename, config.CACHE_DIR)
-        print(f"✓ Saved {model_filename} and {metrics_filename}")
+
+        # Save selector info for inference (critical for Iteration 3+)
+        if selector_info is not None:
+            save_cache(selector_info, selector_filename, config.CACHE_DIR)
+            print(f"✓ Saved {model_filename}, {metrics_filename}, and {selector_filename}")
+        else:
+            print(f"✓ Saved {model_filename} and {metrics_filename}")
+            print(f"  (No feature selection used in Iteration {config.CURRENT_ITERATION})")
+
+        # Save selection report for documentation
+        if selection_report is not None:
+            selection_report_filename = f"selection_report_iter{config.CURRENT_ITERATION}.joblib"
+            save_cache(selection_report, selection_report_filename, config.CACHE_DIR)
+            print(f"✓ Saved feature selection report to {selection_report_filename}")
 
         # Display metrics
         print(f"\n📊 Final Test Metrics Summary:")
@@ -158,7 +184,8 @@ def main():
     processing_log = stdout_buffer.getvalue()
 
     if model is not None:
-        generate_report(model, selected_features, labels, config, processing_log, metrics_dict)
+        generate_report(model, selected_features, labels, config, processing_log,
+                       metrics_dict, selection_report)
         print("✓ Report saved to: report.txt")
     else:
         print("Skipping report - no trained model")

@@ -3,7 +3,7 @@ import os
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 2
+CURRENT_ITERATION = 3
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = False  # Temporarily disabled for testing with real data
@@ -23,8 +23,30 @@ if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR, exist_ok=True)
 
 # -- Preprocessing --
-LOW_PASS_FILTER_FREQ = 40  # Hz
+LOW_PASS_FILTER_FREQ = 40  # Hz (legacy, not used in Iteration 3+)
+
+# Signal-specific bandpass filters (frequencies in Hz)
+# EEG: 0.5-40 Hz preserves sleep-related brain activity
+#   - Delta (0.5-4 Hz): Deep sleep (N3)
+#   - Theta (4-8 Hz): Light sleep (N1), drowsiness
+#   - Alpha (8-13 Hz): Relaxed wakefulness
+#   - Beta (13-30 Hz): Active thinking, REM
 EEG_BANDPASS_FILTER_FREQ = [0.5, 40]
+
+# EOG: 0.2-20 Hz preserves eye movement characteristics
+#   - Slow eye movements (SEM): 0.25-0.5 Hz (N1 marker!)
+#   - Slow rolling movements: 0.5-3 Hz
+#   - Rapid eye movements (REM): 1-10 Hz
+#   - Eye blinks: up to 15 Hz
+#   - 0.2 Hz high-pass preserves full SEM range (critical for N1 detection)
+EOG_BANDPASS_FILTER_FREQ = [0.2, 20]
+
+# EMG: 10-45 Hz preserves muscle tone activity (avoiding 50 Hz powerline interference)
+#   - Muscle tone: 10-100+ Hz (most power 20-40 Hz)
+#   - High-pass at 10 Hz removes movement artifacts
+#   - Low-pass at 45 Hz avoids 50 Hz powerline noise (European standard)
+#   - Still captures primary muscle tone frequencies (20-40 Hz range)
+EMG_BANDPASS_FILTER_FREQ = [10, 45]
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
@@ -80,16 +102,48 @@ elif CURRENT_ITERATION == 3:
     RF_MAX_DEPTH = 10  # Deprecated - kept for backward compatibility
 
     # Random Forest Hyperparameter Tuning Grid (OPTIONAL)
-    # Uncomment and modify to customize the hyperparameter search space
-    # Default searches: n_estimators=[50, 100, 200], max_depth=[None, 10, 20, 30],
-    #                   min_samples_split=[2, 5, 10], min_samples_leaf=[1, 2, 4]
-    # Example for faster tuning (fewer combinations):
+    # Uncomment ONE of the options below based on your needs:
+
+    # OPTION 1: MINIMAL TESTING (fastest - for pipeline verification)
+    # Total: 1 model × 5 folds = 5 trainings (~2-5 minutes)
+    # Use this to verify the pipeline works before doing full tuning
     # RF_PARAM_GRID = {
-    #     'n_estimators': [100, 200],
-    #     'max_depth': [None, 20],
-    #     'min_samples_split': [2, 5],
-    #     'min_samples_leaf': [1, 2]
+    #     'n_estimators': [50],           # Just 50 trees for speed
+    #     'max_depth': [20],              # Reasonable default
+    #     'min_samples_split': [2],       # Default
+    #     'min_samples_leaf': [1]         # Default
     # }
+
+    # OPTION 2: QUICK TUNING (moderate - reasonable search)
+    # Total: 8 models × 5 folds = 40 trainings (~15-30 minutes)
+    # Uncomment below to use this instead:
+    # RF_PARAM_GRID = {
+    #     'n_estimators': [100],          # Good default, skip 50 and 200
+    #     'max_depth': [None, 20],        # Test unlimited vs limited depth
+    #     'min_samples_split': [2, 5],    # Default vs more conservative
+    #     'min_samples_leaf': [1, 2]      # Default vs more conservative
+    # }
+
+    # OPTION 3: MODERATE TUNING (comprehensive - good balance)
+    # Total: 36 models × 5 folds = 180 trainings (~1-2 hours)
+    # Uncomment below to use this instead:
+    # RF_PARAM_GRID = {
+    #     'n_estimators': [50, 100, 200],     # Test different forest sizes
+    #     'max_depth': [None, 20],            # Unlimited vs limited
+    #     'min_samples_split': [2, 5, 10],    # Range of split thresholds
+    #     'min_samples_leaf': [1, 2]          # Range of leaf sizes
+    # }
+
+    # OPTION 4: FULL TUNING (exhaustive - use overnight or on powerful machine)
+    # Total: 144 models × 5 folds = 720 trainings (~3-6 hours)
+    # This is the original default - only use for final optimization
+    # Uncomment below to use this instead:
+    RF_PARAM_GRID = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [None, 10, 20, 30],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    }
 
 elif CURRENT_ITERATION == 4:
     # Iteration 4: Full system optimization
@@ -103,9 +157,31 @@ elif CURRENT_ITERATION == 4:
     RF_MIN_SAMPLES_SPLIT = 5  # Deprecated - kept for backward compatibility
 
     # Random Forest Hyperparameter Tuning Grid (OPTIONAL)
-    # Uncomment and modify to customize the hyperparameter search space
-    # For Iteration 4, you might want a more refined search based on Iteration 3 results
-    # Example for comprehensive tuning:
+    # For Iteration 4, refine search based on Iteration 3 results
+    # Uncomment ONE of the options below:
+
+    # OPTION 1: MINIMAL TESTING (fastest - for pipeline verification)
+    # Use the best parameters found in Iteration 3
+    RF_PARAM_GRID = {
+        'n_estimators': [100],          # Use best from Iter 3
+        'max_depth': [None],            # Use best from Iter 3
+        'min_samples_split': [2],       # Use best from Iter 3
+        'min_samples_leaf': [1]         # Use best from Iter 3
+    }
+
+    # OPTION 2: REFINED TUNING (moderate - narrow search around Iter 3 best)
+    # Total: 12 models × 5 folds = 60 trainings (~20-40 minutes)
+    # Uncomment below and adjust based on your Iteration 3 results:
+    # RF_PARAM_GRID = {
+    #     'n_estimators': [100, 150, 200],    # Refine around best
+    #     'max_depth': [None, 30],            # If 'None' was best, try nearby
+    #     'min_samples_split': [2, 5],        # Narrow range
+    #     'min_samples_leaf': [1, 2]          # Narrow range
+    # }
+
+    # OPTION 3: COMPREHENSIVE TUNING (exhaustive - final optimization)
+    # Total: 144 models × 5 folds = 720 trainings (~3-6 hours)
+    # Uncomment below for final, comprehensive search:
     # RF_PARAM_GRID = {
     #     'n_estimators': [100, 150, 200, 250],
     #     'max_depth': [None, 20, 30, 40],

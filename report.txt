@@ -1,34 +1,110 @@
 
 ======================================================================
-SLEEP SCORING REPORT - ITERATION 2
+SLEEP SCORING REPORT - ITERATION 4
 ======================================================================
-Generated: 2025-11-18 14:20:06
+Generated: 2025-12-03 19:49:40
 
 ======================================================================
 MODEL INFORMATION
 ======================================================================
-Model Type: SVC
-Classifier: SVM
-Number of Features: 96
+Model Type: RandomForestClassifier
+Classifier: RANDOM_FOREST
+Number of Features: 40
 Number of Samples: 10293 epochs
 
 ======================================================================
 PERFORMANCE METRICS
 ======================================================================
-Accuracy:      0.8145 (± 0.0000)
-Kappa:         0.7493 (± 0.0000)
-F1-Score:      0.7292 (± 0.0000)
+Accuracy:      0.8689 (± 0.0000)
+Kappa:         0.8126 (± 0.0000)
+F1-Score:      0.7325 (± 0.0000)
 
 ======================================================================
 CONFUSION MATRIX
 ======================================================================
 Predicted →
 Actual ↓      Wake      N1      N2      N3     REM
-Wake           581      81      19       1      13
-N1              15      34       3       0       3
-N2              13      52     573      87      37
-N3               0       0      16     308       0
-REM              8      10      23       1     181
+Wake           652       3      32       1       7
+N1              34       6      13       0       2
+N2              32       2     684      34      10
+N3               0       0      50     274       0
+REM              8       0      41       1     173
+
+======================================================================
+FEATURE SELECTION DETAILS
+======================================================================
+Input Features: 81
+Selected Features: 40
+
+Stage 1: Correlation Analysis (threshold r > 0.95)
+----------------------------------------------------------------------
+Removed 17 highly correlated features:
+
+  EEG features removed (8):
+    - eeg_ch0_variance (r=0.983 with eeg_ch0_std)
+    - eeg_ch0_rms (r=1.000 with eeg_ch0_std)
+    - eeg_ch0_hjorth_activity (r=0.983 with eeg_ch0_std)
+    - eeg_ch0_range (r=-0.960 with eeg_ch0_min)
+    - eeg_ch0_range (r=0.960 with eeg_ch0_max)
+    - eeg_ch1_variance (r=0.968 with eeg_ch1_std)
+    - eeg_ch1_rms (r=1.000 with eeg_ch1_std)
+    - eeg_ch1_hjorth_activity (r=0.968 with eeg_ch1_std)
+    - eeg_ch1_range (r=0.954 with eeg_ch1_max)
+
+  EOG features removed (7):
+    - eog_ch1_eog_variance (r=0.952 with eeg_ch0_std)
+    - eog_ch0_eog_rms (r=0.974 with eog_ch0_eog_variance)
+    - eog_ch0_eog_mean_abs_value (r=0.988 with eog_ch0_eog_variance)
+    - eog_ch1_eog_variance (r=0.993 with eog_ch0_eog_variance)
+    - eog_ch1_eog_rms (r=0.976 with eog_ch0_eog_variance)
+    - eog_ch1_eog_mean_abs_value (r=0.988 with eog_ch0_eog_variance)
+    - eog_ch1_eog_rem_score (r=0.960 with eog_ch0_eog_rem_score)
+    - eog_ch1_eog_zero_crossings (r=0.959 with eog_ch0_eog_zero_crossings)
+
+  EMG features removed (2):
+    - emg_ch0_emg_std (r=1.000 with emg_ch0_emg_rms)
+    - emg_ch0_emg_mean_abs (r=0.986 with emg_ch0_emg_rms)
+
+Stage 2: Mutual Information Selection
+----------------------------------------------------------------------
+Selected top 40 features based on mutual information:
+
+Rank   MI Score     Feature Name
+----------------------------------------------------------------------
+1      0.501799     ✓ eeg_ch0_delta_beta_ratio
+2      0.497954     ✓ eeg_ch0_zero_crossings
+3      0.495689     ✓ eeg_ch0_hjorth_mobility
+4      0.450168     ✓ eeg_ch0_spectral_edge_95
+5      0.427586     ✓ eeg_ch0_beta_rel
+6      0.422399     ✓ eeg_ch1_zero_crossings
+7      0.410160     ✓ eeg_ch0_delta_rel
+8      0.407275     ✓ emg_ch0_emg_rms
+9      0.400208     ✓ eeg_ch0_theta_alertness_ratio
+10     0.396208     ✓ eeg_ch0_hjorth_complexity
+11     0.392019     ✓ eeg_ch1_hjorth_mobility
+12     0.378312     ✓ eeg_ch1_delta_beta_ratio
+13     0.369233     ✓ eeg_ch0_gamma_rel
+14     0.349989     ✓ emg_ch0_emg_percentile_10
+15     0.338669     ✓ eeg_ch1_spectral_edge_95
+16     0.338163     ✓ eeg_ch1_theta_alertness_ratio
+17     0.336305     ✓ eeg_ch1_beta_rel
+18     0.333006     ✓ eeg_ch0_std
+19     0.321559     ✓ eog_ch0_eog_rem_score
+20     0.320383     ✓ eog_ch0_eog_variance
+
+... (44 more features)
+
+
+Selected Features by Signal Type:
+----------------------------------------------------------------------
+  EEG: 31 features
+  EOG: 7 features
+  EMG: 2 features
+
+
+Iteration 4 REM-Specific Features Selected:
+----------------------------------------------------------------------
+  emg_ch0_emg_percentile_10                          (MI: 0.349989, Rank: 14)
 
 ======================================================================
 DETAILED PROCESSING LOG
@@ -36,7 +112,7 @@ DETAILED PROCESSING LOG
 
 
 === PROCESSING LOG ===
---- Sleep Scoring Pipeline - Iteration 2 ---
+--- Sleep Scoring Pipeline - Iteration 4 ---
 
 === STEP 1: DATA LOADING ===
 Loading all training data from data/training/...
@@ -247,31 +323,58 @@ Channel information:
   EMG sampling rate: 125.0 Hz
 
 === STEP 2: PREPROCESSING ===
-Preprocessing data for iteration 2...
+Preprocessing data for iteration 4...
 Processing multi-channel data (EEG + EOG + EMG)
-Iteration 2: Processing EEG + EOG channels
+✓ Using continuous signal filtering (eliminates edge artifacts)
+  Processing 10 recordings separately
+✓ Filtered EEG (0.5-40 Hz), EOG (0.2-20 Hz), EMG (10-45 Hz)
 Preprocessed multi-channel data:
   EEG: (10293, 2, 3750)
   EOG: (10293, 2, 3750)
+  EMG: (10293, 1, 3750)
 
 === STEP 3: FEATURE EXTRACTION ===
-Extracting features for iteration 2...
+Extracting features for iteration 4...
 Processing multi-channel data (EEG + EOG + EMG)
-Iteration 2: 96 features (expected: 96)
-  - 2 EEG channels × 24 features (14 time + 10 freq, all normalized)
-  - 2 EOG channels × 24 features (14 time + 10 freq, all normalized)
-Extracted features shape: (10293, 96)
+Iteration 4: 81 features (expected: 81)
+  - 2 EEG channels × 26 features (14 time + 12 freq with N1-specific ratios)
+  - 2 EOG channels × 11 features (SEM detection + REM burst patterns)
+  - 1 EMG channel × 7 features (muscle tone + atonia markers)
+Extracted features shape: (10293, 81)
+Feature names: 81 features
 
 === STEP 4: FEATURE SELECTION ===
-Selecting features for iteration 2...
-Input features shape: (10293, 96)
-Early iteration - using all available features
-Selected features shape: (10293, 96)
-Selected features shape: (10293, 96)
+Selecting features for iteration 4...
+Input features shape: (10293, 81)
+
+======================================================================
+FEATURE SELECTION - 2-STAGE APPROACH
+======================================================================
+Input: 81 features
+
+Stage 1: Correlation Analysis
+  Input: 81 features
+  Removed 17 highly correlated features (r > 0.95)
+  Output: 64 features
+
+Stage 2: Mutual Information Selection
+  Input: 64 features
+  Selected top 40 features based on mutual information
+  Output: 40 features
+
+======================================================================
+FINAL: Reduced from 81 to 40 features
+======================================================================
+
+✓ Selector info saved for inference
+  - Variance selector: not used (removed)
+  - Correlation filter: fitted
+  - MI selector: fitted
+Selected features shape: (10293, 40)
 
 === STEP 5: CLASSIFICATION ===
-Training classifier for Iteration 2...
-Features shape: (10293, 96), Labels shape: (10293,)
+Training classifier for Iteration 4...
+Features shape: (10293, 40), Labels shape: (10293,)
 
 ======================================================================
 DATA SPLIT
@@ -287,60 +390,67 @@ Class distribution (train/test):
   REM: 10.9% / 10.8%
 
 ======================================================================
-ITERATION 2: SVM CLASSIFIER
+ITERATION 3+: RANDOM FOREST CLASSIFIER WITH HYPERPARAMETER TUNING
 ======================================================================
-Training single SVM model with fixed parameters:
-  C=1.0, kernel='rbf', gamma='scale', class_weight='balanced'
-  (Set SVM_TUNE_HYPERPARAMS=True in config to enable hyperparameter tuning)
+Hyperparameter search space:
+  n_estimators: [100]
+  max_depth: [None]
+  min_samples_split: [2]
+  min_samples_leaf: [1]
 
-⚙️  Applying StandardScaler (CRITICAL for SVM performance)...
-   Training feature statistics (BEFORE scaling):
-     Global: min=-4.94e+00, max=9.34e+10, mean=1.63e+08
-     Per-feature: mean range [-8.52e-05, 7.87e+09]
-     Per-feature: std range  [0.00e+00, 8.38e+09]
-   Training feature statistics (AFTER scaling):
-     Global: min=-1.16e+01, max=2.37e+01, mean=6.55e-16
-   Scaler learned from 8234 training samples:
-     Scaler mean range: [-8.52e-05, 7.87e+09]
-     Scaler scale range: [1.12e-10, 8.38e+09]
+🔬 Cross-Validation Strategy: GroupKFold (subject-wise, 5 folds)
+   Number of unique subjects: 10
+   Number of folds: 5
+   ✓ Subject-independent evaluation (no data leakage)
+   Each fold trains on 4 subjects, validates on 1 subject
 
-Training model on full training set...
-  Training samples: 8234
-  Features: 96
-✓ Training complete
+Performing GridSearchCV with GroupKFold (subject-wise, 5 folds)...
+Total combinations to test: 1
+(This may take several minutes...)
+Fitting 5 folds for each of 1 candidates, totalling 5 fits
+
+----------------------------------------------------------------------
+GridSearchCV Results:
+----------------------------------------------------------------------
+Best hyperparameters: {'max_depth': None, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 100}
+Best CV F1 Macro: 0.558
+
+Top 5 configurations:
+  Rank 1: n_est=100, max_depth=None, min_split=2, min_leaf=1, Score=0.558 (+/- 0.051)
+
+Best model has 100 trees with max_depth=None
 
 ======================================================================
 FINAL EVALUATION ON HELD-OUT TEST SET
 ======================================================================
-Applying StandardScaler to test set...
-Test Accuracy: 0.814
-Test Macro F1: 0.729
-Test Cohen's Kappa: 0.749
+Test Accuracy: 0.869
+Test Macro F1: 0.732
+Test Cohen's Kappa: 0.813
 
 ======================================================================
 SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
 ======================================================================
-Overall Accuracy: 0.814
-Macro F1-Score: 0.729
-Weighted F1-Score: 0.831
+Overall Accuracy: 0.869
+Macro F1-Score: 0.732
+Weighted F1-Score: 0.861
 
 Confusion Matrix:
       Wake  N1   N2   N3  REM
-Wake   581  81   19    1   13
-N1      15  34    3    0    3
-N2      13  52  573   87   37
-N3       0   0   16  308    0
-REM      8  10   23    1  181
+Wake   652   3   32    1    7
+N1      34   6   13    0    2
+N2      32   2  684   34   10
+N3       0   0   50  274    0
+REM      8   0   41    1  173
 
 Per-Class Performance Metrics:
 ----------------------------------------------------------------------
 Stage    Accuracy   Sensitivity  Specificity  F1-Score  
 ----------------------------------------------------------------------
-Wake     0.836      0.836        0.974        0.886     
-N1       0.618      0.618        0.929        0.293     
-N2       0.752      0.752        0.953        0.821     
-N3       0.951      0.951        0.949        0.854     
-REM      0.812      0.812        0.971        0.792     
+Wake     0.938      0.938        0.946        0.918     
+N1       0.109      0.109        0.998        0.182     
+N2       0.898      0.898        0.895        0.865     
+N3       0.846      0.846        0.979        0.864     
+REM      0.776      0.776        0.990        0.834     
 ----------------------------------------------------------------------
 
 Class Distribution in Test Set:
@@ -356,23 +466,27 @@ Notes for Sleep Scoring:
 - Sleep stage imbalance is natural (more N2, less N1/REM)
 - Consider Cohen's kappa for chance-corrected agreement
 - Clinical focus: High sensitivity for REM and N3 stages
-Trained svm classifier
+Trained random_forest classifier
 
-Saving model and metrics to cache/...
-Data cached to cache/model_iter2.joblib
-Data cached to cache/metrics_iter2.joblib
-✓ Saved model_iter2.joblib and metrics_iter2.joblib
+Saving model, metrics, and feature selector to cache/...
+Data cached to cache/model_iter4.joblib
+Data cached to cache/metrics_iter4.joblib
+Data cached to cache/selector_info_iter4.joblib
+✓ Saved model_iter4.joblib, metrics_iter4.joblib, and selector_info_iter4.joblib
+Data cached to cache/selection_report_iter4.joblib
+✓ Saved feature selection report to selection_report_iter4.joblib
 
 📊 Final Test Metrics Summary:
-  Accuracy: 0.814
-  Macro F1: 0.729
-  Weighted F1: 0.831
-  Cohen's Kappa: 0.749
+  Accuracy: 0.869
+  Macro F1: 0.732
+  Weighted F1: 0.861
+  Cohen's Kappa: 0.813
 
 === STEP 6: VISUALIZATION ===
 Visualizing results...
 ✓ Confusion matrix saved to: confusion_matrix.png
 ✓ ROC curves saved to: roc_curves_cv.png
+  (Feature importance available in Iteration 3+ with Random Forest)
 
 
 ======================================================================
