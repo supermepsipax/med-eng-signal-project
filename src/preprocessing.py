@@ -83,8 +83,8 @@ def bandpass_filter(data, lowcut, highcut, fs, order=5):
 
     Combines high-pass and low-pass filtering. Common ranges:
     - EEG: 0.5-40 Hz (preserves delta through beta bands)
-    - EOG: 0.3-20 Hz (preserves slow eye movements)
-    - EMG: 10-60 Hz (preserves muscle tone frequencies)
+    - EOG: 0.2-20 Hz (preserves slow eye movements)
+    - EMG: 10-45 Hz (preserves muscle tone, avoids 50 Hz powerline)
 
     Args:
         data (np.ndarray): The input signal.
@@ -114,10 +114,7 @@ def bandpass_filter(data, lowcut, highcut, fs, order=5):
 
 def preprocess(data, channel_info, config, record_ids=None):
     """
-    STUDENT IMPLEMENTATION AREA: Preprocess data based on current iteration.
-
-    This function should handle both single-channel and multi-channel data
-    (2 EEG + 2 EOG + 1 EMG channels) based on the data structure.
+    Preprocess multi-channel data based on current iteration.
 
     IMPORTANT: Uses continuous signal filtering to avoid edge effects.
     When record_ids are provided, concatenates epochs by recording, filters
@@ -125,25 +122,17 @@ def preprocess(data, channel_info, config, record_ids=None):
     inter-epoch edge artifacts and preserves slow oscillations.
 
     Args:
-        data: Either np.ndarray (single-channel) or dict (multi-channel)
+        data (dict): Multi-channel data with keys 'eeg', 'eog', 'emg'
         channel_info (dict): Channel metadata including sampling rates and channel names
         config (module): The configuration module.
         record_ids (np.ndarray): Array mapping each epoch to its recording ID (optional)
 
     Returns:
-        Same format as input: preprocessed data.
+        dict: Preprocessed multi-channel data.
     """
     print(f"Preprocessing data for iteration {config.CURRENT_ITERATION}...")
-
-    # Detect data format
-    is_multi_channel = isinstance(data, dict) and 'eeg' in data
-
-    if is_multi_channel:
-        print("Processing multi-channel data (EEG + EOG + EMG)")
-        return preprocess_multi_channel(data, channel_info, config, record_ids)
-    else:
-        print("Processing single-channel data (backward compatibility)")
-        return preprocess_single_channel(data, channel_info, config, record_ids)
+    print("Processing multi-channel data (EEG + EOG + EMG)")
+    return preprocess_multi_channel(data, channel_info, config, record_ids)
 
 def preprocess_multi_channel(multi_channel_data, channel_info, config, record_ids=None):
     """
@@ -315,27 +304,3 @@ def filter_epochs_multichannel(data, lowcut, highcut, fs):
             filtered_data[epoch, ch, :] = bandpass_filter(signal, lowcut, highcut, fs)
 
     return filtered_data
-
-
-def preprocess_single_channel(data, channel_info, config):
-    """
-    Backward compatibility for single-channel preprocessing.
-    """
-    if config.CURRENT_ITERATION == 1:
-        # EXAMPLE: Very basic low-pass filter (students should expand)
-        # Get actual sampling rate from channel_info, fallback to 125 Hz
-        fs = channel_info.get('eeg_fs', 125) if channel_info else 125
-        preprocessed_data = lowpass_filter(data, config.LOW_PASS_FILTER_FREQ, fs)
-
-    elif config.CURRENT_ITERATION == 2:
-        print("TODO: Implement enhanced preprocessing for iteration 2")
-        preprocessed_data = data  # Placeholder
-
-    elif config.CURRENT_ITERATION >= 3:
-        print("TODO: Students should use multi-channel data format for iteration 3+")
-        preprocessed_data = data  # Placeholder
-
-    else:
-        raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
-
-    return preprocessed_data

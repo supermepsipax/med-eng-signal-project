@@ -60,28 +60,34 @@ def run_inference():
     # 3. Feature Extraction (using the same logic as training)
     print("\n=== STEP 3: FEATURE EXTRACTION ===")
     holdout_features = None
+    holdout_feature_names = None
     cache_filename_features_holdout = f"features_holdout_iter{config.CURRENT_ITERATION}.joblib"
+    cache_filename_names_holdout = f"feature_names_holdout_iter{config.CURRENT_ITERATION}.joblib"
     if config.USE_CACHE:
         holdout_features = load_cache(cache_filename_features_holdout, config.CACHE_DIR)
-        if holdout_features is not None:
-            print("Loaded holdout features from cache")
+        holdout_feature_names = load_cache(cache_filename_names_holdout, config.CACHE_DIR)
+        if holdout_features is not None and holdout_feature_names is not None:
+            print("Loaded holdout features and feature names from cache")
 
     if holdout_features is None:
-        holdout_features = extract_features(preprocessed_holdout_data, config, channel_info)
+        holdout_features, holdout_feature_names = extract_features(preprocessed_holdout_data, config, channel_info)
         print(f"Extracted holdout features shape: {holdout_features.shape}")
+        print(f"Feature names: {len(holdout_feature_names)} features")
         if config.USE_CACHE:
             save_cache(holdout_features, cache_filename_features_holdout, config.CACHE_DIR)
-            print("Saved holdout features to cache")
+            save_cache(holdout_feature_names, cache_filename_names_holdout, config.CACHE_DIR)
+            print("Saved holdout features and feature names to cache")
 
     # 4. Feature Selection (CRITICAL: Apply same selection as training)
     print("\n=== STEP 4: FEATURE SELECTION ===")
     if selector_info is not None:
         print("Applying pre-fitted feature selection from training...")
-        selected_holdout_features, _ = select_features(
+        selected_holdout_features, _, _ = select_features(
             holdout_features,
             labels=None,  # No labels for holdout data
             config=config,
-            selector_info=selector_info
+            selector_info=selector_info,
+            feature_names=holdout_feature_names
         )
     else:
         print("No feature selection (using all features)")

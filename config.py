@@ -33,18 +33,20 @@ LOW_PASS_FILTER_FREQ = 40  # Hz (legacy, not used in Iteration 3+)
 #   - Beta (13-30 Hz): Active thinking, REM
 EEG_BANDPASS_FILTER_FREQ = [0.5, 40]
 
-# EOG: 0.3-20 Hz preserves eye movement characteristics
-#   - Slow eye movements: 0.3-3 Hz
+# EOG: 0.2-20 Hz preserves eye movement characteristics
+#   - Slow eye movements (SEM): 0.25-0.5 Hz (N1 marker!)
+#   - Slow rolling movements: 0.5-3 Hz
 #   - Rapid eye movements (REM): 1-10 Hz
 #   - Eye blinks: up to 15 Hz
-#   - Lower high-pass (0.3 Hz) than EEG to preserve slow eye movements
-EOG_BANDPASS_FILTER_FREQ = [0.3, 20]
+#   - 0.2 Hz high-pass preserves full SEM range (critical for N1 detection)
+EOG_BANDPASS_FILTER_FREQ = [0.2, 20]
 
-# EMG: 10-60 Hz preserves muscle tone activity
-#   - Muscle tone: 10-100+ Hz (most power 20-60 Hz)
+# EMG: 10-45 Hz preserves muscle tone activity (avoiding 50 Hz powerline interference)
+#   - Muscle tone: 10-100+ Hz (most power 20-40 Hz)
 #   - High-pass at 10 Hz removes movement artifacts
-#   - Low-pass at 60 Hz removes high-frequency noise while preserving muscle activity
-EMG_BANDPASS_FILTER_FREQ = [10, 60]
+#   - Low-pass at 45 Hz avoids 50 Hz powerline noise (European standard)
+#   - Still captures primary muscle tone frequencies (20-40 Hz range)
+EMG_BANDPASS_FILTER_FREQ = [10, 45]
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
@@ -125,23 +127,23 @@ elif CURRENT_ITERATION == 3:
     # OPTION 3: MODERATE TUNING (comprehensive - good balance)
     # Total: 36 models × 5 folds = 180 trainings (~1-2 hours)
     # Uncomment below to use this instead:
-    RF_PARAM_GRID = {
-        'n_estimators': [50, 100, 200],     # Test different forest sizes
-        'max_depth': [None, 20],            # Unlimited vs limited
-        'min_samples_split': [2, 5, 10],    # Range of split thresholds
-        'min_samples_leaf': [1, 2]          # Range of leaf sizes
-    }
+    # RF_PARAM_GRID = {
+    #     'n_estimators': [50, 100, 200],     # Test different forest sizes
+    #     'max_depth': [None, 20],            # Unlimited vs limited
+    #     'min_samples_split': [2, 5, 10],    # Range of split thresholds
+    #     'min_samples_leaf': [1, 2]          # Range of leaf sizes
+    # }
 
     # OPTION 4: FULL TUNING (exhaustive - use overnight or on powerful machine)
     # Total: 144 models × 5 folds = 720 trainings (~3-6 hours)
     # This is the original default - only use for final optimization
     # Uncomment below to use this instead:
-    # RF_PARAM_GRID = {
-    #     'n_estimators': [50, 100, 200],
-    #     'max_depth': [None, 10, 20, 30],
-    #     'min_samples_split': [2, 5, 10],
-    #     'min_samples_leaf': [1, 2, 4]
-    # }
+    RF_PARAM_GRID = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [None, 10, 20, 30],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    }
 
 elif CURRENT_ITERATION == 4:
     # Iteration 4: Full system optimization

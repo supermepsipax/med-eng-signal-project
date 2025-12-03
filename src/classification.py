@@ -436,10 +436,14 @@ def train_random_forest(X_train, y_train, config, groups=None):
     print("(This may take several minutes...)")
 
     grid_search = GridSearchCV(
-        RandomForestClassifier(random_state=42, n_jobs=-1),
+        RandomForestClassifier(
+            random_state=42,
+            n_jobs=-1,
+            class_weight='balanced'  # CRITICAL: Handle class imbalance (N1 is only 2.7%!)
+        ),
         param_grid,
         cv=cv_strategy,
-        scoring="accuracy",
+        scoring="f1_macro",  # Optimize for F1 Macro (leaderboard metric!)
         n_jobs=-1,
         verbose=1,
     )
@@ -454,7 +458,7 @@ def train_random_forest(X_train, y_train, config, groups=None):
     print("GridSearchCV Results:")
     print("-" * 70)
     print(f"Best hyperparameters: {grid_search.best_params_}")
-    print(f"Best CV Accuracy: {grid_search.best_score_:.3f}")
+    print(f"Best CV F1 Macro: {grid_search.best_score_:.3f}")
 
     # Show top 5 configurations
     results_df = pd.DataFrame(grid_search.cv_results_)
