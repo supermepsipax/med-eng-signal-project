@@ -161,7 +161,7 @@ def extract_frequency_domain_features(epoch, fs, signal_type="eeg"):
     return features
 
 
-def extract_features(data, config):
+def extract_features(data, config, channel_info=None):
     """
     STUDENT IMPLEMENTATION AREA: Extract features based on current iteration.
 
@@ -176,6 +176,7 @@ def extract_features(data, config):
     Args:
         data: Either np.ndarray (single-channel) or dict (multi-channel)
         config (module): The configuration module.
+        channel_info (dict): Channel metadata including sampling rates
 
     Returns:
         np.ndarray: A 2D array of features (n_epochs, n_features).
@@ -187,7 +188,7 @@ def extract_features(data, config):
 
     if is_multi_channel:
         print("Processing multi-channel data (EEG + EOG + EMG)")
-        return extract_multi_channel_features(data, config)
+        return extract_multi_channel_features(data, config, channel_info)
     else:
         print("Processing single-channel data (backward compatibility)")
         return extract_single_channel_features(data, config)
@@ -223,22 +224,33 @@ def extract_eeg_features(eeg_signal, fs=125, include_frequency=True):
     return features
 
 
-def extract_multi_channel_features(multi_channel_data, config):
+def extract_multi_channel_features(multi_channel_data, config, channel_info=None):
     """
     Extract features from multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
 
     Iteration 1: 14 time-domain features per EEG channel (backward compatible)
     Iteration 2+: 24 features (14 time + 10 freq) per channel for EEG and EOG
+    Iteration 3+: Add EMG features
+
+    Args:
+        multi_channel_data (dict): Dictionary with 'eeg', 'eog', 'emg' keys
+        config (module): Configuration module
+        channel_info (dict): Channel metadata including sampling rates
     """
     n_epochs = multi_channel_data["eeg"].shape[0]
     all_features = []
 
     include_frequency = config.CURRENT_ITERATION >= 2
 
+    # Get sampling rates from channel_info, with fallback defaults
+    eeg_fs = channel_info.get('eeg_fs', 125) if channel_info else 125
+    eog_fs = channel_info.get('eog_fs', 50) if channel_info else 50
+    emg_fs = channel_info.get('emg_fs', 125) if channel_info else 125
+
     for epoch_idx in range(n_epochs):
         epoch_features = []
 
-        eeg_fs = 125  # Default EEG sampling rate
+        # Extract EEG features (always present)
         for ch in range(multi_channel_data["eeg"].shape[1]):
             eeg_signal = multi_channel_data["eeg"][epoch_idx, ch, :]
             eeg_features = extract_eeg_features(
@@ -246,9 +258,9 @@ def extract_multi_channel_features(multi_channel_data, config):
             )
             epoch_features.extend(list(eeg_features.values()))
 
+        # Extract EOG features (Iteration 2+)
         if config.CURRENT_ITERATION >= 2:
             if "eog" in multi_channel_data:
-                eog_fs = 50  # Default EOG sampling rate
                 for ch in range(multi_channel_data["eog"].shape[1]):
                     eog_signal = multi_channel_data["eog"][epoch_idx, ch, :]
                     eog_features = extract_eog_features(
@@ -256,10 +268,11 @@ def extract_multi_channel_features(multi_channel_data, config):
                     )
                     epoch_features.extend(list(eog_features.values()))
 
+        # Extract EMG features (Iteration 3+)
         if config.CURRENT_ITERATION >= 3:
             if "emg" in multi_channel_data:
                 emg_signal = multi_channel_data["emg"][epoch_idx, 0, :]
-                emg_features = extract_emg_features(emg_signal)
+                emg_features = extract_emg_features(emg_signal, fs=emg_fs)
                 epoch_features.extend(list(emg_features.values()))
 
         all_features.append(epoch_features)
@@ -272,17 +285,18 @@ def extract_multi_channel_features(multi_channel_data, config):
         print(f"Iteration 1: {features.shape[1]} features (expected: {expected})")
         print("  - 2 EEG channels × 14 time-domain features")
     elif config.CURRENT_ITERATION == 2:
-        expected = 2 * 24 + 2 * 24  # 2 EEG + 2 EOG × 24 features
+        expected = 2 * 24 + 2 * 6  # 2 EEG × 24 + 2 EOG × 6
         print(f"Iteration 2: {features.shape[1]} features (expected: {expected})")
         print("  - 2 EEG channels × 24 features (14 time + 10 freq, all normalized)")
-        print("  - 2 EOG channels × 24 features (14 time + 10 freq, all normalized)")
+        print("  - 2 EOG channels × 6 eye-movement-specific features")
     elif config.CURRENT_ITERATION >= 3:
+        expected = 2 * 24 + 2 * 6 + 1 * 4  # 2 EEG × 24 + 2 EOG × 6 + 1 EMG × 4
         print(
-            f"Iteration {config.CURRENT_ITERATION}: {features.shape[1]} total features"
+            f"Iteration {config.CURRENT_ITERATION}: {features.shape[1]} features (expected: {expected})"
         )
         print("  - 2 EEG channels × 24 features (14 time + 10 freq, all normalized)")
-        print("  - 2 EOG channels × 24 features (14 time + 10 freq, all normalized)")
-        print("  - 1 EMG channel × features")
+        print("  - 2 EOG channels × 6 eye-movement-specific features")
+        print("  - 1 EMG channel × 4 muscle-tone features")
 
     return features
 
@@ -322,61 +336,124 @@ def extract_single_channel_features(data, config):
     return features
 
 
-def extract_eog_features(eog_signal, fs=50, include_frequency=True):
+def extract_eog_features(eog_signal, fs=50, include_frequency=False):
     """
-    Extract 24 features from EOG signal: 14 time-domain + 10 frequency-domain.
+    Extract 6 EOG-specific features focused on eye movement detection.
 
     EOG signals are used to detect:
     - Rapid eye movements (REM sleep indicator)
     - Slow eye movements (NREM sleep)
     - Eye blinks and artifacts
 
+    PROJECT_GUIDE.md Iteration 3 specification (lines 1902-1905):
+    - ~6 features per channel (vs 24 for EEG)
+    - Focused on REM detection and eye movements
+    - Peak amplitude, variance, REM detection score
+
     Args:
         eog_signal (np.ndarray): 1D array of EOG signal data
         fs (float): Sampling frequency (default 50 Hz for EOG)
-        include_frequency (bool): Whether to include frequency features
+        include_frequency (bool): Kept for API compatibility (ignored for EOG)
 
     Returns:
-        dict: Combined time and frequency domain features
+        dict: 6 EOG-specific features focused on eye movement detection
     """
-    # Use the same 14 time-domain features as EEG
-    # These are signal-agnostic and work well for EOG too
-    features = extract_time_domain_features(eog_signal)
+    # 1. Peak amplitude (max absolute value) - eye movement magnitude
+    peak_amplitude = np.max(np.abs(eog_signal))
 
-    if include_frequency:
-        # Add 10 frequency-domain features (all normalized/relative)
-        # EOG frequency features help distinguish REM (rapid movements) from NREM
-        freq_features = extract_frequency_domain_features(
-            eog_signal, fs, signal_type="eog"
-        )
-        features.update(freq_features)
+    # 2. Variance - signal variability indicator
+    variance = np.var(eog_signal)
 
-    # TODO: Students could add EOG-specific features:
-    # - Eye movement detection (peak counting, saccade detection)
-    # - Rapid vs slow movement discrimination (velocity metrics)
-    # - Cross-channel correlations (left vs right eye for conjugate movements)
+    # 3. RMS - signal power (normalized measure)
+    rms = np.sqrt(np.mean(eog_signal**2))
+
+    # 4. REM detection score - count rapid deflections
+    # High-pass filter >0.5 Hz to isolate rapid movements
+    nyquist = fs / 2
+    if 0.5 < nyquist:  # Only apply if possible (should always be true for 50 Hz)
+        b, a = signal.butter(3, 0.5 / nyquist, btype='high')
+        filtered_signal = signal.filtfilt(b, a, eog_signal)
+    else:
+        filtered_signal = eog_signal
+
+    # Count peaks above threshold (indicates rapid eye movements)
+    threshold = 0.5 * np.std(filtered_signal)
+    peaks, _ = signal.find_peaks(np.abs(filtered_signal), height=threshold)
+    rem_score = len(peaks)  # More peaks = likely REM
+
+    # 5. Zero-crossing rate - frequency of signal changes
+    zero_crossings = np.sum(np.diff(np.sign(eog_signal)) != 0)
+
+    # 6. Mean absolute value - overall activity level
+    mean_abs_value = np.mean(np.abs(eog_signal))
+
+    features = {
+        "eog_peak_amplitude": peak_amplitude,
+        "eog_variance": variance,
+        "eog_rms": rms,
+        "eog_rem_score": rem_score,
+        "eog_zero_crossings": zero_crossings,
+        "eog_mean_abs_value": mean_abs_value,
+    }
 
     return features
 
 
-def extract_emg_features(emg_signal):
+def extract_emg_features(emg_signal, fs=125):
     """
-    STUDENT TODO: Extract EMG-specific features for muscle tone detection.
+    Extract EMG-specific features for muscle tone detection.
 
     EMG signals are used to detect:
-    - Muscle tone levels (high in wake, low in REM)
+    - Muscle tone levels (high in wake, low in REM due to atonia)
     - Muscle twitches and artifacts
     - Sleep-related muscle activity
-    """
-    features = {
-        "emg_mean": np.mean(emg_signal),
-        "emg_std": np.std(emg_signal),
-        "emg_rms": np.sqrt(np.mean(emg_signal**2)),
-    }
 
-    # TODO: Students should add:
-    # - High-frequency power (muscle activity indicator)
-    # - Spectral edge frequency
-    # - Muscle tone quantification
+    PROJECT_GUIDE.md Iteration 3 specification (lines 1907-1914):
+    - 2-4 features per channel
+    - Signal power (mean squared amplitude) - low in REM, high in wake/NREM
+    - Variance
+    - Optional: High-frequency (20-40 Hz) power ratio
+
+    Args:
+        emg_signal (np.ndarray): 1D array of EMG signal data
+        fs (float): Sampling frequency (default 125 Hz for EMG)
+
+    Returns:
+        dict: 4 EMG-specific features for muscle tone quantification
+    """
+    # 1. RMS - signal power (low in REM, high in wake/NREM)
+    emg_rms = np.sqrt(np.mean(emg_signal**2))
+
+    # 2. Standard deviation - signal variability
+    emg_std = np.std(emg_signal)
+
+    # 3. Mean absolute value - overall activity level
+    emg_mean_abs = np.mean(np.abs(emg_signal))
+
+    # 4. High-frequency power ratio (20-40 Hz) - muscle activity indicator
+    # Muscle activity concentrates in high-frequency band
+    nperseg = min(256, len(emg_signal))
+    freqs, psd = signal.welch(
+        emg_signal,
+        fs=fs,
+        nperseg=nperseg,
+        noverlap=nperseg // 2
+    )
+
+    # Calculate power in high-frequency band (20-40 Hz) - muscle activity
+    hf_idx = np.logical_and(freqs >= 20, freqs <= 40)
+    total_idx = freqs <= 60  # Total band up to 60 Hz
+
+    hf_power = np.trapz(psd[hf_idx], freqs[hf_idx]) if np.sum(hf_idx) > 0 else 0
+    total_power = np.trapz(psd[total_idx], freqs[total_idx]) if np.sum(total_idx) > 0 else 1e-10
+
+    hf_ratio = hf_power / total_power
+
+    features = {
+        "emg_rms": emg_rms,
+        "emg_std": emg_std,
+        "emg_mean_abs": emg_mean_abs,
+        "emg_hf_ratio": hf_ratio,
+    }
 
     return features

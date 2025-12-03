@@ -61,7 +61,7 @@ def main():
             print("Loaded preprocessed data from cache")
 
     if preprocessed_data is None:
-        preprocessed_data = preprocess(multi_channel_data, channel_info, config)
+        preprocessed_data = preprocess(multi_channel_data, channel_info, config, record_ids)
         # Display preprocessed data info
         if isinstance(preprocessed_data, dict):
             print("Preprocessed multi-channel data:")
@@ -83,7 +83,7 @@ def main():
             print("Loaded features from cache")
 
     if features is None:
-        features = extract_features(preprocessed_data, config)
+        features = extract_features(preprocessed_data, config, channel_info)
         print(f"Extracted features shape: {features.shape}")
         if features.shape[1] == 0:
             print("⚠️  WARNING: No features extracted! Students must implement feature extraction.")
@@ -93,7 +93,7 @@ def main():
 
     # 4. Feature Selection
     print("\n=== STEP 4: FEATURE SELECTION ===")
-    selected_features = select_features(features, labels, config)
+    selected_features, selector_info = select_features(features, labels, config)
     print(f"Selected features shape: {selected_features.shape}")
 
     # 5. Classification
@@ -102,6 +102,7 @@ def main():
     metrics_dict = None
     model_filename = f"model_iter{config.CURRENT_ITERATION}.joblib"
     metrics_filename = f"metrics_iter{config.CURRENT_ITERATION}.joblib"
+    selector_filename = f"selector_info_iter{config.CURRENT_ITERATION}.joblib"
 
     if selected_features.shape[1] > 0:
         # Try to load model and metrics from cache
@@ -114,14 +115,26 @@ def main():
 
         # Train if not cached
         if model is None:
-            model, metrics_dict = train_classifier(selected_features, labels, config)
+            model, metrics_dict = train_classifier(
+                selected_features,
+                labels,
+                config,
+                record_ids=record_ids  # Pass record_ids for subject-wise CV
+            )
             print(f"Trained {config.CLASSIFIER_TYPE} classifier")
 
-        # ALWAYS save model and metrics (regardless of cache settings)
-        print(f"\nSaving model and metrics to {config.CACHE_DIR}...")
+        # ALWAYS save model, metrics, and selector info (regardless of cache settings)
+        print(f"\nSaving model, metrics, and feature selector to {config.CACHE_DIR}...")
         save_cache(model, model_filename, config.CACHE_DIR)
         save_cache(metrics_dict, metrics_filename, config.CACHE_DIR)
-        print(f"✓ Saved {model_filename} and {metrics_filename}")
+
+        # Save selector info for inference (critical for Iteration 3+)
+        if selector_info is not None:
+            save_cache(selector_info, selector_filename, config.CACHE_DIR)
+            print(f"✓ Saved {model_filename}, {metrics_filename}, and {selector_filename}")
+        else:
+            print(f"✓ Saved {model_filename} and {metrics_filename}")
+            print(f"  (No feature selection used in Iteration {config.CURRENT_ITERATION})")
 
         # Display metrics
         print(f"\n📊 Final Test Metrics Summary:")

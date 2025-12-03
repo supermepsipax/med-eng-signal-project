@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
+from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV, GroupKFold
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score
 from sklearn.preprocessing import StandardScaler
@@ -18,15 +18,22 @@ except ImportError:
     HAS_METRICS = False
 
 
-def train_classifier(features, labels, config):
+def train_classifier(features, labels, config, record_ids=None):
     """
     Train a classifier with iteration-specific strategies.
 
     Iteration 1 (k-NN): Simple CV evaluation, optional k tuning
     Iteration 2 (SVM): GridSearchCV for hyperparameter tuning (C, gamma, kernel)
     Iteration 3+ (RF): GridSearchCV for hyperparameter tuning (n_estimators, max_depth, etc.)
+                       with subject-wise cross-validation (GroupKFold)
 
     Uses proper train/test split to avoid data leakage and make CV useful for model improvement.
+
+    Args:
+        features: Feature matrix (n_samples, n_features)
+        labels: Labels array (n_samples,)
+        config: Configuration module
+        record_ids: Array of record IDs for subject-wise splitting (optional but recommended for Iteration 3+)
     """
     print(f"Training classifier for Iteration {config.CURRENT_ITERATION}...")
     print(f"Features shape: {features.shape}, Labels shape: {labels.shape}")
@@ -37,9 +44,22 @@ def train_classifier(features, labels, config):
     print("\n" + "=" * 70)
     print("DATA SPLIT")
     print("=" * 70)
+
+    # For Iteration 3+, warn if record_ids not provided
+    if config.CURRENT_ITERATION >= 3 and record_ids is None:
+        print("⚠️  WARNING: record_ids not provided for Iteration 3+")
+        print("   GridSearchCV will use standard StratifiedKFold (may overfit to subjects)")
+        print("   For proper subject-independent evaluation, pass record_ids to train_classifier()")
+
     X_train, X_test, y_train, y_test = train_test_split(
         features, labels, test_size=0.2, random_state=42, stratify=labels
     )
+
+    # Also split record_ids if provided
+    if record_ids is not None:
+        _, _, record_ids_train, _ = train_test_split(
+            features, record_ids, test_size=0.2, random_state=42, stratify=labels
+        )
     print(
         f"Training set: {X_train.shape[0]} samples ({X_train.shape[0] / features.shape[0] * 100:.1f}%)"
     )
@@ -62,7 +82,9 @@ def train_classifier(features, labels, config):
     elif config.CURRENT_ITERATION == 2:
         best_model = train_svm(X_train, y_train, config)
     elif config.CURRENT_ITERATION >= 3:
-        best_model = train_random_forest(X_train, y_train, config)
+        # Pass record_ids to enable subject-wise cross-validation
+        groups_train = record_ids_train if record_ids is not None else None
+        best_model = train_random_forest(X_train, y_train, config, groups=groups_train)
     else:
         raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
 
@@ -348,12 +370,20 @@ def train_svm(X_train, y_train, config):
         return best_model
 
 
-def train_random_forest(X_train, y_train, config):
+def train_random_forest(X_train, y_train, config, groups=None):
     """
     Train Random Forest classifier with GridSearchCV for hyperparameter tuning.
 
     Strategy: RF has many hyperparameters. Use GridSearchCV to tune the most
     important ones: n_estimators, max_depth, min_samples_split.
+
+    For proper subject-independent evaluation, uses GroupKFold when groups are provided.
+
+    Args:
+        X_train: Training features
+        y_train: Training labels
+        config: Configuration module
+        groups: Array of group labels (record IDs) for subject-wise CV (optional)
     """
     print("\n" + "=" * 70)
     print("ITERATION 3+: RANDOM FOREST CLASSIFIER WITH HYPERPARAMETER TUNING")
@@ -375,7 +405,31 @@ def train_random_forest(X_train, y_train, config):
     for param, values in param_grid.items():
         print(f"  {param}: {values}")
 
-    print(f"\nPerforming GridSearchCV with {config.CV_FOLDS}-fold CV...")
+    # Configure cross-validation strategy based on whether groups are provided
+    if groups is not None:
+        # Subject-wise cross-validation (recommended for sleep staging)
+        unique_groups = np.unique(groups)
+        n_groups = len(unique_groups)
+        n_folds = min(config.CV_FOLDS, n_groups)  # Can't have more folds than groups
+
+        cv_strategy = GroupKFold(n_splits=n_folds)
+        cv_description = f"GroupKFold (subject-wise, {n_folds} folds)"
+
+        print(f"\n🔬 Cross-Validation Strategy: {cv_description}")
+        print(f"   Number of unique subjects: {n_groups}")
+        print(f"   Number of folds: {n_folds}")
+        print(f"   ✓ Subject-independent evaluation (no data leakage)")
+        print(f"   Each fold trains on {n_folds-1} subjects, validates on 1 subject")
+    else:
+        # Standard stratified cross-validation (fallback)
+        cv_strategy = config.CV_FOLDS
+        cv_description = f"StratifiedKFold ({config.CV_FOLDS} folds)"
+
+        print(f"\n⚠️  Cross-Validation Strategy: {cv_description}")
+        print(f"   WARNING: Standard CV may have data leakage across subjects")
+        print(f"   Recommendation: Pass record_ids to enable subject-wise CV")
+
+    print(f"\nPerforming GridSearchCV with {cv_description}...")
     print(
         f"Total combinations to test: {np.prod([len(v) for v in param_grid.values()])}"
     )
@@ -384,12 +438,17 @@ def train_random_forest(X_train, y_train, config):
     grid_search = GridSearchCV(
         RandomForestClassifier(random_state=42, n_jobs=-1),
         param_grid,
-        cv=config.CV_FOLDS,
+        cv=cv_strategy,
         scoring="accuracy",
         n_jobs=-1,
         verbose=1,
     )
-    grid_search.fit(X_train, y_train)
+
+    # Fit with or without groups parameter
+    if groups is not None:
+        grid_search.fit(X_train, y_train, groups=groups)
+    else:
+        grid_search.fit(X_train, y_train)
 
     print("\n" + "-" * 70)
     print("GridSearchCV Results:")

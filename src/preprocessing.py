@@ -1,15 +1,13 @@
-from scipy.signal import butter, lfilter, iirnotch
+from scipy.signal import butter, filtfilt, iirnotch
 import numpy as np
 
 def lowpass_filter(data, cutoff, fs, order=5):
     """
-    EXAMPLE IMPLEMENTATION: Simple low-pass Butterworth filter.
+    Zero-phase low-pass Butterworth filter using filtfilt.
 
-    Students should understand this basic filter and consider:
-    - Is 40Hz the right cutoff for EEG?
-    - What about high-pass filtering?
-    - Should you use bandpass instead?
-    - What about notch filtering for powerline interference?
+    filtfilt applies the filter forward and backward, eliminating phase distortion
+    and providing better edge handling than lfilter. This is critical for
+    biomedical signals where waveform shape must be preserved.
 
     Args:
         data (np.ndarray): The input signal.
@@ -18,22 +16,22 @@ def lowpass_filter(data, cutoff, fs, order=5):
         order (int): The order of the filter.
 
     Returns:
-        np.ndarray: The filtered signal.
+        np.ndarray: The filtered signal with zero phase distortion.
     """
-    # TODO: Students may want to implement additional filtering:
-    # - High-pass filter to remove DC drift
-    # - Notch filter for 50/60 Hz powerline noise
-    # - Bandpass filter (e.g., 0.5-40 Hz for EEG)
-
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
+
+    # Ensure cutoff is below Nyquist frequency
+    if normal_cutoff >= 1.0:
+        raise ValueError(f"Cutoff frequency {cutoff} Hz must be less than Nyquist frequency {nyquist} Hz")
+
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    y = lfilter(b, a, data)
+    y = filtfilt(b, a, data)
     return y
 
 def highpass_filter(data, cutoff, fs, order=5):
     """
-    High-pass Butterworth filter to remove DC drift and slow artifacts.
+    Zero-phase high-pass Butterworth filter to remove DC drift and slow artifacts.
 
     Useful for removing low-frequency noise and baseline drift in EEG signals.
     Typical cutoff frequencies for EEG: 0.5-1 Hz
@@ -45,17 +43,22 @@ def highpass_filter(data, cutoff, fs, order=5):
         order (int): The order of the filter.
 
     Returns:
-        np.ndarray: The filtered signal.
+        np.ndarray: The filtered signal with zero phase distortion.
     """
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
+
+    # Ensure cutoff is valid
+    if normal_cutoff >= 1.0:
+        raise ValueError(f"Cutoff frequency {cutoff} Hz must be less than Nyquist frequency {nyquist} Hz")
+
     b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    y = lfilter(b, a, data)
+    y = filtfilt(b, a, data)
     return y
 
 def notch_filter(data, center_freq, fs, Q=30):
     """
-    Notch filter to remove powerline interference at a specific frequency.
+    Zero-phase notch filter to remove powerline interference at a specific frequency.
 
     Commonly used to remove 50 Hz or 60 Hz powerline noise from EEG signals.
     The Q factor determines the width of the notch (higher Q = narrower notch).
@@ -67,19 +70,21 @@ def notch_filter(data, center_freq, fs, Q=30):
         Q (float): Quality factor. Higher values = narrower notch. Default is 30.
 
     Returns:
-        np.ndarray: The filtered signal.
+        np.ndarray: The filtered signal with zero phase distortion.
     """
     # Design notch filter
     b, a = iirnotch(center_freq, Q, fs)
-    y = lfilter(b, a, data)
+    y = filtfilt(b, a, data)
     return y
 
 def bandpass_filter(data, lowcut, highcut, fs, order=5):
     """
-    Bandpass Butterworth filter to retain frequencies within a specific range.
+    Zero-phase bandpass Butterworth filter to retain frequencies within a specific range.
 
-    Combines high-pass and low-pass filtering. Common EEG bandpass: 0.5-40 Hz
-    This is often more efficient than applying separate high-pass and low-pass filters.
+    Combines high-pass and low-pass filtering. Common ranges:
+    - EEG: 0.5-40 Hz (preserves delta through beta bands)
+    - EOG: 0.3-20 Hz (preserves slow eye movements)
+    - EMG: 10-60 Hz (preserves muscle tone frequencies)
 
     Args:
         data (np.ndarray): The input signal.
@@ -89,26 +94,41 @@ def bandpass_filter(data, lowcut, highcut, fs, order=5):
         order (int): The order of the filter.
 
     Returns:
-        np.ndarray: The filtered signal.
+        np.ndarray: The filtered signal with zero phase distortion.
     """
     nyquist = 0.5 * fs
     low = lowcut / nyquist
     high = highcut / nyquist
+
+    # Ensure frequencies are valid
+    if high >= 1.0:
+        raise ValueError(f"High cutoff {highcut} Hz must be less than Nyquist frequency {nyquist} Hz")
+    if low <= 0:
+        raise ValueError(f"Low cutoff {lowcut} Hz must be greater than 0")
+    if low >= high:
+        raise ValueError(f"Low cutoff {lowcut} Hz must be less than high cutoff {highcut} Hz")
+
     b, a = butter(order, [low, high], btype='band', analog=False)
-    y = lfilter(b, a, data)
+    y = filtfilt(b, a, data)
     return y
 
-def preprocess(data, channel_info, config):
+def preprocess(data, channel_info, config, record_ids=None):
     """
     STUDENT IMPLEMENTATION AREA: Preprocess data based on current iteration.
 
     This function should handle both single-channel and multi-channel data
     (2 EEG + 2 EOG + 1 EMG channels) based on the data structure.
 
+    IMPORTANT: Uses continuous signal filtering to avoid edge effects.
+    When record_ids are provided, concatenates epochs by recording, filters
+    the continuous signal, then re-segments into epochs. This eliminates
+    inter-epoch edge artifacts and preserves slow oscillations.
+
     Args:
         data: Either np.ndarray (single-channel) or dict (multi-channel)
         channel_info (dict): Channel metadata including sampling rates and channel names
         config (module): The configuration module.
+        record_ids (np.ndarray): Array mapping each epoch to its recording ID (optional)
 
     Returns:
         Same format as input: preprocessed data.
@@ -120,80 +140,181 @@ def preprocess(data, channel_info, config):
 
     if is_multi_channel:
         print("Processing multi-channel data (EEG + EOG + EMG)")
-        return preprocess_multi_channel(data, channel_info, config)
+        return preprocess_multi_channel(data, channel_info, config, record_ids)
     else:
         print("Processing single-channel data (backward compatibility)")
-        return preprocess_single_channel(data, channel_info, config)
+        return preprocess_single_channel(data, channel_info, config, record_ids)
 
-def preprocess_multi_channel(multi_channel_data, channel_info, config):
+def preprocess_multi_channel(multi_channel_data, channel_info, config, record_ids=None):
     """
     Preprocess multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
-    Each channel type may have different sampling rates and require different processing.
+
+    CONTINUOUS SIGNAL FILTERING APPROACH:
+    - When record_ids provided: Concatenates epochs per recording, filters continuous signal, re-segments
+    - When record_ids absent: Falls back to per-epoch filtering (less optimal but functional)
+
+    This eliminates inter-epoch edge artifacts and properly handles slow oscillations.
+
+    Args:
+        multi_channel_data (dict): Multi-channel data with keys 'eeg', 'eog', 'emg'
+        channel_info (dict): Channel metadata including sampling rates
+        config (module): Configuration module
+        record_ids (np.ndarray): Array mapping each epoch to its recording ID
+
+    Returns:
+        dict: Preprocessed multi-channel data in same format
     """
     preprocessed_data = {}
 
+    # Get sampling rates
+    eeg_fs = channel_info.get('eeg_fs', 125) if channel_info else 125
+    eog_fs = channel_info.get('eog_fs', 50) if channel_info else 50
+    emg_fs = channel_info.get('emg_fs', 125) if channel_info else 125
+
+    # Determine filtering approach
+    use_continuous_filtering = (record_ids is not None)
+
+    if use_continuous_filtering:
+        print("✓ Using continuous signal filtering (eliminates edge artifacts)")
+        unique_recordings = np.unique(record_ids)
+        print(f"  Processing {len(unique_recordings)} recordings separately")
+    else:
+        print("⚠ Warning: No record_ids provided, using per-epoch filtering")
+        print("  (May have edge artifacts - consider passing record_ids)")
+
     # Process EEG channels (2 channels)
     eeg_data = multi_channel_data['eeg']
-    # Get actual sampling rate from channel_info, fallback to 125 Hz
-    eeg_fs = channel_info.get('eeg_fs', 125) if channel_info else 125
-    preprocessed_eeg = np.zeros_like(eeg_data)
-
-    for ch in range(eeg_data.shape[1]):
-        for epoch in range(eeg_data.shape[0]):
-            signal = eeg_data[epoch, ch, :]
-            # Apply EEG-specific preprocessing
-            # filtered_signal = lowpass_filter(signal, config.LOW_PASS_FILTER_FREQ, eeg_fs)
-            filtered_signal = bandpass_filter(signal, config.EEG_BANDPASS_FILTER_FREQ[0], config.EEG_BANDPASS_FILTER_FREQ[1], eeg_fs)
-            # TODO: Students should add bandpass filter, artifact removal
-            preprocessed_eeg[epoch, ch, :] = filtered_signal
-
+    if use_continuous_filtering:
+        preprocessed_eeg = filter_continuous_multichannel(
+            eeg_data, record_ids,
+            config.EEG_BANDPASS_FILTER_FREQ[0],
+            config.EEG_BANDPASS_FILTER_FREQ[1],
+            eeg_fs,
+            signal_type='EEG'
+        )
+    else:
+        preprocessed_eeg = filter_epochs_multichannel(
+            eeg_data,
+            config.EEG_BANDPASS_FILTER_FREQ[0],
+            config.EEG_BANDPASS_FILTER_FREQ[1],
+            eeg_fs
+        )
     preprocessed_data['eeg'] = preprocessed_eeg
 
     if config.CURRENT_ITERATION >= 2:  # EOG starts in iteration 2
-        # Process EOG channels (2 channels) - may need different filtering
         eog_data = multi_channel_data['eog']
-        # Get actual sampling rate from channel_info, fallback to 50 Hz
-        eog_fs = channel_info.get('eog_fs', 50) if channel_info else 50
-        preprocessed_eog = np.zeros_like(eog_data)
-
-        for ch in range(eog_data.shape[1]):
-            for epoch in range(eog_data.shape[0]):
-                signal = eog_data[epoch, ch, :]
-                # EOG may need different filter settings (preserve slow eye movements)
-                # Cutoff must be < Nyquist frequency (eog_fs/2 = 25 Hz for 50 Hz sampling)
-                filtered_signal = lowpass_filter(signal, 20, eog_fs)  # Lower cutoff for EOG
-                preprocessed_eog[epoch, ch, :] = filtered_signal
-
+        if use_continuous_filtering:
+            preprocessed_eog = filter_continuous_multichannel(
+                eog_data, record_ids,
+                config.EOG_BANDPASS_FILTER_FREQ[0],
+                config.EOG_BANDPASS_FILTER_FREQ[1],
+                eog_fs,
+                signal_type='EOG'
+            )
+        else:
+            preprocessed_eog = filter_epochs_multichannel(
+                eog_data,
+                config.EOG_BANDPASS_FILTER_FREQ[0],
+                config.EOG_BANDPASS_FILTER_FREQ[1],
+                eog_fs
+            )
         preprocessed_data['eog'] = preprocessed_eog
 
     if config.CURRENT_ITERATION >= 3:  # EMG starts in iteration 3
-        # Process EMG channel (1 channel) - may need higher frequency preservation
         emg_data = multi_channel_data['emg']
-        # Get actual sampling rate from channel_info, fallback to 125 Hz
-        emg_fs = channel_info.get('emg_fs', 125) if channel_info else 125
-        preprocessed_emg = np.zeros_like(emg_data)
-
-        for epoch in range(emg_data.shape[0]):
-            signal = emg_data[epoch, 0, :]
-            # EMG needs higher frequency content preserved (muscle activity)
-            # Cutoff must be < Nyquist frequency (emg_fs/2 = 62.5 Hz for 125 Hz sampling)
-            filtered_signal = lowpass_filter(signal, 60, emg_fs)  # Higher cutoff for EMG
-            preprocessed_emg[epoch, 0, :] = filtered_signal
-
+        if use_continuous_filtering:
+            preprocessed_emg = filter_continuous_multichannel(
+                emg_data, record_ids,
+                config.EMG_BANDPASS_FILTER_FREQ[0],
+                config.EMG_BANDPASS_FILTER_FREQ[1],
+                emg_fs,
+                signal_type='EMG'
+            )
+        else:
+            preprocessed_emg = filter_epochs_multichannel(
+                emg_data,
+                config.EMG_BANDPASS_FILTER_FREQ[0],
+                config.EMG_BANDPASS_FILTER_FREQ[1],
+                emg_fs
+            )
         preprocessed_data['emg'] = preprocessed_emg
-        print("Multi-channel preprocessing applied to EEG + EOG + EMG")
-    elif config.CURRENT_ITERATION >= 2:
-        print("Iteration 2: Processing EEG + EOG channels")
-    else:
-        print("Iteration 1: Processing EEG channels only")
 
-    # TODO: Students should add:
-    # - Channel-specific artifact removal
-    # - Cross-channel artifact detection
-    # - Signal quality assessment
-    # - Normalization per channel type
+    # Print summary
+    if config.CURRENT_ITERATION >= 3:
+        print(f"✓ Filtered EEG ({config.EEG_BANDPASS_FILTER_FREQ[0]}-{config.EEG_BANDPASS_FILTER_FREQ[1]} Hz), " +
+              f"EOG ({config.EOG_BANDPASS_FILTER_FREQ[0]}-{config.EOG_BANDPASS_FILTER_FREQ[1]} Hz), " +
+              f"EMG ({config.EMG_BANDPASS_FILTER_FREQ[0]}-{config.EMG_BANDPASS_FILTER_FREQ[1]} Hz)")
+    elif config.CURRENT_ITERATION >= 2:
+        print(f"✓ Filtered EEG and EOG")
+    else:
+        print(f"✓ Filtered EEG")
 
     return preprocessed_data
+
+
+def filter_continuous_multichannel(data, record_ids, lowcut, highcut, fs, signal_type='Signal'):
+    """
+    Filter multi-channel data by concatenating epochs per recording,
+    filtering continuous signal, then re-segmenting.
+
+    Args:
+        data (np.ndarray): Shape (n_epochs, n_channels, n_samples)
+        record_ids (np.ndarray): Shape (n_epochs,) - recording ID for each epoch
+        lowcut, highcut (float): Bandpass filter frequencies
+        fs (float): Sampling frequency
+        signal_type (str): Name for logging (e.g., 'EEG', 'EOG', 'EMG')
+
+    Returns:
+        np.ndarray: Filtered data in same shape as input
+    """
+    n_epochs, n_channels, samples_per_epoch = data.shape
+    filtered_data = np.zeros_like(data)
+
+    unique_recordings = np.unique(record_ids)
+
+    for recording_id in unique_recordings:
+        # Find epochs belonging to this recording
+        epoch_mask = (record_ids == recording_id)
+        epoch_indices = np.where(epoch_mask)[0]
+
+        # Process each channel separately
+        for ch in range(n_channels):
+            # Concatenate epochs into continuous signal
+            continuous_signal = data[epoch_mask, ch, :].flatten()
+
+            # Filter the continuous signal (zero-phase with filtfilt)
+            filtered_continuous = bandpass_filter(continuous_signal, lowcut, highcut, fs)
+
+            # Re-segment into epochs
+            for i, epoch_idx in enumerate(epoch_indices):
+                start_sample = i * samples_per_epoch
+                end_sample = start_sample + samples_per_epoch
+                filtered_data[epoch_idx, ch, :] = filtered_continuous[start_sample:end_sample]
+
+    return filtered_data
+
+
+def filter_epochs_multichannel(data, lowcut, highcut, fs):
+    """
+    Fallback: Filter each epoch independently (may have edge artifacts).
+
+    Args:
+        data (np.ndarray): Shape (n_epochs, n_channels, n_samples)
+        lowcut, highcut (float): Bandpass filter frequencies
+        fs (float): Sampling frequency
+
+    Returns:
+        np.ndarray: Filtered data in same shape as input
+    """
+    n_epochs, n_channels, samples_per_epoch = data.shape
+    filtered_data = np.zeros_like(data)
+
+    for ch in range(n_channels):
+        for epoch in range(n_epochs):
+            signal = data[epoch, ch, :]
+            filtered_data[epoch, ch, :] = bandpass_filter(signal, lowcut, highcut, fs)
+
+    return filtered_data
 
 
 def preprocess_single_channel(data, channel_info, config):
