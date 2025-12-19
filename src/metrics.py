@@ -113,25 +113,3 @@ def calculate_feature_importance(model, feature_names=None):
     return result
 
 
-def get_kappa_interpretation(kappa):
-    """
-    Get interpretation string for Cohen's Kappa value.
-    
-    Args:
-        kappa (float): Cohen's Kappa coefficient
-    
-    Returns:
-        str: Interpretation string
-    """
-    if kappa < 0.00:
-        return "Poor agreement"
-    elif kappa <= 0.20:
-        return "Slight agreement"
-    elif kappa <= 0.40:
-        return "Fair agreement"
-    elif kappa <= 0.60:
-        return "Moderate agreement"
-    elif kappa <= 0.80:
-        return "Substantial agreement"
-    else:
-        return "Almost perfect agreement"

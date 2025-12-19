@@ -290,13 +290,14 @@ def _print_label_distribution(labels):
             print(f"  {stage_names[stage]}: {count} epochs ({pct:.1f}%)")
 
 
-def load_all_training_data(training_dir, epoch_length=30):
+def load_all_training_data(training_dir, epoch_length=30, exclude_patients=None):
     """
     Load all training recordings from a directory.
 
     Args:
         training_dir (str): Path to directory containing EDF and XML files
         epoch_length (float): Epoch duration in seconds (default 30)
+        exclude_patients (list): List of patient IDs to exclude (e.g., ['R10', 'R5'])
 
     Returns:
         tuple: (all_data, all_labels, all_record_ids, channel_info) where:
@@ -309,10 +310,15 @@ def load_all_training_data(training_dir, epoch_length=30):
         >>> data, labels, record_ids, info = load_all_training_data('data/training/')
         >>> print(f"Total epochs: {len(labels)}")
         >>> print(f"Unique recordings: {len(np.unique(record_ids))}")
+        >>> # Exclude R10 for holdout testing:
+        >>> data, labels, record_ids, info = load_all_training_data('data/training/', exclude_patients=['R10'])
     """
     from glob import glob
 
     print(f"Loading all training data from {training_dir}...")
+
+    if exclude_patients:
+        print(f"⚠️  Excluding patients: {exclude_patients}")
 
     # Find all EDF files
     edf_files = sorted(glob(os.path.join(training_dir, '*.edf')))
@@ -320,7 +326,14 @@ def load_all_training_data(training_dir, epoch_length=30):
     if not edf_files:
         raise FileNotFoundError(f"No EDF files found in {training_dir}")
 
-    print(f"Found {len(edf_files)} recordings")
+    # Filter out excluded patients
+    if exclude_patients:
+        original_count = len(edf_files)
+        edf_files = [f for f in edf_files if Path(f).stem not in exclude_patients]
+        excluded_count = original_count - len(edf_files)
+        print(f"Found {len(edf_files)} recordings (excluded {excluded_count} patients)")
+    else:
+        print(f"Found {len(edf_files)} recordings")
 
     # Initialize lists to store data from all recordings
     all_eeg = []

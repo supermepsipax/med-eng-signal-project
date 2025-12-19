@@ -2,7 +2,7 @@
 ======================================================================
 SLEEP SCORING REPORT - ITERATION 4
 ======================================================================
-Generated: 2025-12-03 19:49:40
+Generated: 2025-12-19 14:08:49
 
 ======================================================================
 MODEL INFORMATION
@@ -15,55 +15,35 @@ Number of Samples: 10293 epochs
 ======================================================================
 PERFORMANCE METRICS
 ======================================================================
-Accuracy:      0.8689 (± 0.0000)
-Kappa:         0.8126 (± 0.0000)
-F1-Score:      0.7325 (± 0.0000)
+Accuracy:      0.8456 (± 0.0000)
+Kappa:         0.7775 (± 0.0000)
+F1-Score:      0.6755 (± 0.0000)
 
 ======================================================================
 CONFUSION MATRIX
 ======================================================================
 Predicted →
 Actual ↓      Wake      N1      N2      N3     REM
-Wake           652       3      32       1       7
-N1              34       6      13       0       2
-N2              32       2     684      34      10
-N3               0       0      50     274       0
-REM              8       0      41       1     173
+Wake           643       2      43       1       6
+N1              33       1      17       0       4
+N2              33       2     686      30      11
+N3               0       0      54     270       0
+REM             15       0      66       1     141
 
 ======================================================================
 FEATURE SELECTION DETAILS
 ======================================================================
-Input Features: 81
+Input Features: 55
 Selected Features: 40
 
 Stage 1: Correlation Analysis (threshold r > 0.95)
 ----------------------------------------------------------------------
-Removed 17 highly correlated features:
+Removed 2 highly correlated features:
 
-  EEG features removed (8):
-    - eeg_ch0_variance (r=0.983 with eeg_ch0_std)
-    - eeg_ch0_rms (r=1.000 with eeg_ch0_std)
-    - eeg_ch0_hjorth_activity (r=0.983 with eeg_ch0_std)
-    - eeg_ch0_range (r=-0.960 with eeg_ch0_min)
-    - eeg_ch0_range (r=0.960 with eeg_ch0_max)
-    - eeg_ch1_variance (r=0.968 with eeg_ch1_std)
-    - eeg_ch1_rms (r=1.000 with eeg_ch1_std)
-    - eeg_ch1_hjorth_activity (r=0.968 with eeg_ch1_std)
-    - eeg_ch1_range (r=0.954 with eeg_ch1_max)
 
-  EOG features removed (7):
-    - eog_ch1_eog_variance (r=0.952 with eeg_ch0_std)
-    - eog_ch0_eog_rms (r=0.974 with eog_ch0_eog_variance)
-    - eog_ch0_eog_mean_abs_value (r=0.988 with eog_ch0_eog_variance)
-    - eog_ch1_eog_variance (r=0.993 with eog_ch0_eog_variance)
-    - eog_ch1_eog_rms (r=0.976 with eog_ch0_eog_variance)
-    - eog_ch1_eog_mean_abs_value (r=0.988 with eog_ch0_eog_variance)
+  EOG features removed (2):
     - eog_ch1_eog_rem_score (r=0.960 with eog_ch0_eog_rem_score)
     - eog_ch1_eog_zero_crossings (r=0.959 with eog_ch0_eog_zero_crossings)
-
-  EMG features removed (2):
-    - emg_ch0_emg_std (r=1.000 with emg_ch0_emg_rms)
-    - emg_ch0_emg_mean_abs (r=0.986 with emg_ch0_emg_rms)
 
 Stage 2: Mutual Information Selection
 ----------------------------------------------------------------------
@@ -72,39 +52,40 @@ Selected top 40 features based on mutual information:
 Rank   MI Score     Feature Name
 ----------------------------------------------------------------------
 1      0.501799     ✓ eeg_ch0_delta_beta_ratio
-2      0.497954     ✓ eeg_ch0_zero_crossings
-3      0.495689     ✓ eeg_ch0_hjorth_mobility
-4      0.450168     ✓ eeg_ch0_spectral_edge_95
+2      0.495689     ✓ eeg_ch0_hjorth_mobility
+3      0.495013     ✓ eeg_ch0_zero_crossings
+4      0.456414     ✓ eeg_ch0_spectral_edge_95
 5      0.427586     ✓ eeg_ch0_beta_rel
-6      0.422399     ✓ eeg_ch1_zero_crossings
+6      0.427370     ✓ eeg_ch1_zero_crossings
 7      0.410160     ✓ eeg_ch0_delta_rel
-8      0.407275     ✓ emg_ch0_emg_rms
-9      0.400208     ✓ eeg_ch0_theta_alertness_ratio
-10     0.396208     ✓ eeg_ch0_hjorth_complexity
-11     0.392019     ✓ eeg_ch1_hjorth_mobility
-12     0.378312     ✓ eeg_ch1_delta_beta_ratio
-13     0.369233     ✓ eeg_ch0_gamma_rel
-14     0.349989     ✓ emg_ch0_emg_percentile_10
-15     0.338669     ✓ eeg_ch1_spectral_edge_95
-16     0.338163     ✓ eeg_ch1_theta_alertness_ratio
-17     0.336305     ✓ eeg_ch1_beta_rel
-18     0.333006     ✓ eeg_ch0_std
-19     0.321559     ✓ eog_ch0_eog_rem_score
-20     0.320383     ✓ eog_ch0_eog_variance
+8      0.400208     ✓ eeg_ch0_theta_alertness_ratio
+9      0.396208     ✓ eeg_ch0_hjorth_complexity
+10     0.392019     ✓ eeg_ch1_hjorth_mobility
+11     0.378312     ✓ eeg_ch1_delta_beta_ratio
+12     0.369233     ✓ eeg_ch0_gamma_rel
+13     0.353982     ✓ eeg_ch1_spectral_edge_95
+14     0.338163     ✓ eeg_ch1_theta_alertness_ratio
+15     0.336305     ✓ eeg_ch1_beta_rel
+16     0.319382     ✓ eeg_ch1_delta_rel
+17     0.309622     ✓ eog_ch0_eog_rem_score
+18     0.292734     ✓ eeg_ch1_hjorth_complexity
+19     0.285196     ✓ eeg_ch0_spectral_entropy
+20     0.272369     ✓ eeg_ch1_spectral_entropy
 
-... (44 more features)
+... (33 more features)
 
 
 Selected Features by Signal Type:
 ----------------------------------------------------------------------
-  EEG: 31 features
-  EOG: 7 features
-  EMG: 2 features
+  EEG: 29 features
+  EOG: 10 features
+  EMG: 1 features
 
 
 Iteration 4 REM-Specific Features Selected:
 ----------------------------------------------------------------------
-  emg_ch0_emg_percentile_10                          (MI: 0.349989, Rank: 14)
+  eog_ch0_eog_mean_burst_duration                    (MI: 0.150610, Rank: 38)
+  eog_ch1_eog_mean_burst_duration                    (MI: 0.166014, Rank: 34)
 
 ======================================================================
 DETAILED PROCESSING LOG
@@ -328,6 +309,7 @@ Processing multi-channel data (EEG + EOG + EMG)
 ✓ Using continuous signal filtering (eliminates edge artifacts)
   Processing 10 recordings separately
 ✓ Filtered EEG (0.5-40 Hz), EOG (0.2-20 Hz), EMG (10-45 Hz)
+✓ Applying per-epoch z-score normalization (domain adaptation)
 Preprocessed multi-channel data:
   EEG: (10293, 2, 3750)
   EOG: (10293, 2, 3750)
@@ -340,30 +322,59 @@ Iteration 4: 81 features (expected: 81)
   - 2 EEG channels × 26 features (14 time + 12 freq with N1-specific ratios)
   - 2 EOG channels × 11 features (SEM detection + REM burst patterns)
   - 1 EMG channel × 7 features (muscle tone + atonia markers)
-Extracted features shape: (10293, 81)
-Feature names: 81 features
+
+⚠️  Domain adaptation: Removed 26 domain-shifted features:
+    - eeg_ch0_mean
+    - eeg_ch0_median
+    - eeg_ch0_std
+    - eeg_ch0_variance
+    - eeg_ch0_rms
+    - eeg_ch0_skewness
+    - eeg_ch0_kurtosis
+    - eeg_ch0_hjorth_activity
+    - eeg_ch0_theta_alpha_ratio
+    - eeg_ch0_transition_ratio
+    - eeg_ch1_mean
+    - eeg_ch1_median
+    - eeg_ch1_std
+    - eeg_ch1_variance
+    - eeg_ch1_rms
+    - eeg_ch1_skewness
+    - eeg_ch1_kurtosis
+    - eeg_ch1_hjorth_activity
+    - eeg_ch1_theta_alpha_ratio
+    - eeg_ch1_transition_ratio
+    - eog_ch0_eog_variance
+    - eog_ch0_eog_rms
+    - eog_ch1_eog_variance
+    - eog_ch1_eog_rms
+    - emg_ch0_emg_rms
+    - emg_ch0_emg_std
+  Remaining: 55 robust features
+Extracted features shape: (10293, 55)
+Feature names: 55 features
 
 === STEP 4: FEATURE SELECTION ===
 Selecting features for iteration 4...
-Input features shape: (10293, 81)
+Input features shape: (10293, 55)
 
 ======================================================================
 FEATURE SELECTION - 2-STAGE APPROACH
 ======================================================================
-Input: 81 features
+Input: 55 features
 
 Stage 1: Correlation Analysis
-  Input: 81 features
-  Removed 17 highly correlated features (r > 0.95)
-  Output: 64 features
+  Input: 55 features
+  Removed 2 highly correlated features (r > 0.95)
+  Output: 53 features
 
 Stage 2: Mutual Information Selection
-  Input: 64 features
+  Input: 53 features
   Selected top 40 features based on mutual information
   Output: 40 features
 
 ======================================================================
-FINAL: Reduced from 81 to 40 features
+FINAL: Reduced from 55 to 40 features
 ======================================================================
 
 ✓ Selector info saved for inference
@@ -413,44 +424,44 @@ Fitting 5 folds for each of 1 candidates, totalling 5 fits
 GridSearchCV Results:
 ----------------------------------------------------------------------
 Best hyperparameters: {'max_depth': None, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 100}
-Best CV F1 Macro: 0.558
+Best CV F1 Macro: 0.515
 
 Top 5 configurations:
-  Rank 1: n_est=100, max_depth=None, min_split=2, min_leaf=1, Score=0.558 (+/- 0.051)
+  Rank 1: n_est=100, max_depth=None, min_split=2, min_leaf=1, Score=0.515 (+/- 0.032)
 
 Best model has 100 trees with max_depth=None
 
 ======================================================================
 FINAL EVALUATION ON HELD-OUT TEST SET
 ======================================================================
-Test Accuracy: 0.869
-Test Macro F1: 0.732
-Test Cohen's Kappa: 0.813
+Test Accuracy: 0.846
+Test Macro F1: 0.675
+Test Cohen's Kappa: 0.777
 
 ======================================================================
 SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
 ======================================================================
-Overall Accuracy: 0.869
-Macro F1-Score: 0.732
-Weighted F1-Score: 0.861
+Overall Accuracy: 0.846
+Macro F1-Score: 0.675
+Weighted F1-Score: 0.834
 
 Confusion Matrix:
       Wake  N1   N2   N3  REM
-Wake   652   3   32    1    7
-N1      34   6   13    0    2
-N2      32   2  684   34   10
-N3       0   0   50  274    0
-REM      8   0   41    1  173
+Wake   643   2   43    1    6
+N1      33   1   17    0    4
+N2      33   2  686   30   11
+N3       0   0   54  270    0
+REM     15   0   66    1  141
 
 Per-Class Performance Metrics:
 ----------------------------------------------------------------------
 Stage    Accuracy   Sensitivity  Specificity  F1-Score  
 ----------------------------------------------------------------------
-Wake     0.938      0.938        0.946        0.918     
-N1       0.109      0.109        0.998        0.182     
-N2       0.898      0.898        0.895        0.865     
-N3       0.846      0.846        0.979        0.864     
-REM      0.776      0.776        0.990        0.834     
+Wake     0.925      0.925        0.941        0.906     
+N1       0.018      0.018        0.998        0.033     
+N2       0.900      0.900        0.861        0.843     
+N3       0.833      0.833        0.982        0.863     
+REM      0.632      0.632        0.989        0.732     
 ----------------------------------------------------------------------
 
 Class Distribution in Test Set:
@@ -477,16 +488,16 @@ Data cached to cache/selection_report_iter4.joblib
 ✓ Saved feature selection report to selection_report_iter4.joblib
 
 📊 Final Test Metrics Summary:
-  Accuracy: 0.869
-  Macro F1: 0.732
-  Weighted F1: 0.861
-  Cohen's Kappa: 0.813
+  Accuracy: 0.846
+  Macro F1: 0.675
+  Weighted F1: 0.834
+  Cohen's Kappa: 0.777
 
 === STEP 6: VISUALIZATION ===
 Visualizing results...
 ✓ Confusion matrix saved to: confusion_matrix.png
 ✓ ROC curves saved to: roc_curves_cv.png
-  (Feature importance available in Iteration 3+ with Random Forest)
+✓ Feature importance plot saved to: feature_importance.png
 
 
 ======================================================================

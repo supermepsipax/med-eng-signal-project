@@ -2,10 +2,10 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV, GroupKFold
+from sklearn.model_selection import train_test_split, GridSearchCV, GroupKFold
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 import pandas as pd
 
 # Import the new metrics module
@@ -93,9 +93,9 @@ def train_classifier(features, labels, config, record_ids=None):
     print("FINAL EVALUATION ON HELD-OUT TEST SET")
     print("=" * 70)
 
-    # Apply scaler if model has one (SVM with StandardScaler)
+    # Apply scaler if model has one (SVM with RobustScaler)
     if hasattr(best_model, "scaler"):
-        print("Applying StandardScaler to test set...")
+        print("Applying RobustScaler to test set...")
         X_test_scaled = best_model.scaler.transform(X_test)
         y_pred = best_model.predict(X_test_scaled)
         if hasattr(best_model, "predict_proba"):
@@ -249,9 +249,9 @@ def train_svm(X_train, y_train, config):
             f"  (Set SVM_TUNE_HYPERPARAMS=True in config to enable hyperparameter tuning)"
         )
 
-        # CRITICAL: Scale features for SVM
-        print("\n⚙️  Applying StandardScaler (CRITICAL for SVM performance)...")
-        scaler = StandardScaler()
+        # CRITICAL: Scale features for SVM (using RobustScaler for domain robustness)
+        print("\n⚙️  Applying RobustScaler (more robust to outliers and domain shift)...")
+        scaler = RobustScaler()
         X_train_scaled = scaler.fit_transform(X_train)
 
         print("   Training feature statistics (BEFORE scaling):")
@@ -298,9 +298,9 @@ def train_svm(X_train, y_train, config):
         # Option 2: Hyperparameter tuning with GridSearchCV (SLOW but optimal)
         print("Hyperparameter tuning enabled (this may take a while...)")
 
-        # CRITICAL: Scale features for SVM
-        print("\n⚙️  Applying StandardScaler (CRITICAL for SVM performance)...")
-        scaler = StandardScaler()
+        # CRITICAL: Scale features for SVM (using RobustScaler for domain robustness)
+        print("\n⚙️  Applying RobustScaler (more robust to outliers and domain shift)...")
+        scaler = RobustScaler()
         X_train_scaled = scaler.fit_transform(X_train)
 
         print("   Training feature statistics (BEFORE scaling):")

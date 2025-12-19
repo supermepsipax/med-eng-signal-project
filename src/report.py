@@ -1,3 +1,10 @@
+"""
+Report Generation Module for Sleep Stage Classification
+
+Generates a comprehensive text report summarizing model performance,
+feature selection details, and processing logs.
+"""
+
 import numpy as np
 from datetime import datetime
 

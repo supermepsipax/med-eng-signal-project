@@ -3,7 +3,7 @@ import os
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 3
+CURRENT_ITERATION = 4
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = False  # Temporarily disabled for testing with real data
@@ -23,8 +23,6 @@ if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR, exist_ok=True)
 
 # -- Preprocessing --
-LOW_PASS_FILTER_FREQ = 40  # Hz (legacy, not used in Iteration 3+)
-
 # Signal-specific bandpass filters (frequencies in Hz)
 # EEG: 0.5-40 Hz preserves sleep-related brain activity
 #   - Delta (0.5-4 Hz): Deep sleep (N3)
@@ -95,12 +93,6 @@ elif CURRENT_ITERATION == 3:
     # Iteration 3: Multi-signal processing with Random Forest
     CLASSIFIER_TYPE = 'random_forest'
 
-    # NOTE: The parameters below are DEPRECATED and no longer used
-    # Random Forest now uses GridSearchCV for automatic hyperparameter tuning
-    # See RF_PARAM_GRID below to customize the search space
-    RF_N_ESTIMATORS = 100  # Deprecated - kept for backward compatibility
-    RF_MAX_DEPTH = 10  # Deprecated - kept for backward compatibility
-
     # Random Forest Hyperparameter Tuning Grid (OPTIONAL)
     # Uncomment ONE of the options below based on your needs:
 
@@ -149,29 +141,21 @@ elif CURRENT_ITERATION == 4:
     # Iteration 4: Full system optimization
     CLASSIFIER_TYPE = 'random_forest'
 
-    # NOTE: The parameters below are DEPRECATED and no longer used
-    # Random Forest now uses GridSearchCV for automatic hyperparameter tuning
-    # See RF_PARAM_GRID below to customize the search space
-    RF_N_ESTIMATORS = 200  # Deprecated - kept for backward compatibility
-    RF_MAX_DEPTH = None  # Deprecated - kept for backward compatibility
-    RF_MIN_SAMPLES_SPLIT = 5  # Deprecated - kept for backward compatibility
-
     # Random Forest Hyperparameter Tuning Grid (OPTIONAL)
     # For Iteration 4, refine search based on Iteration 3 results
     # Uncomment ONE of the options below:
 
     # OPTION 1: MINIMAL TESTING (fastest - for pipeline verification)
     # Use the best parameters found in Iteration 3
-    RF_PARAM_GRID = {
-        'n_estimators': [100],          # Use best from Iter 3
-        'max_depth': [None],            # Use best from Iter 3
-        'min_samples_split': [2],       # Use best from Iter 3
-        'min_samples_leaf': [1]         # Use best from Iter 3
-    }
+    # RF_PARAM_GRID = {
+    #     'n_estimators': [100],          # Use best from Iter 3
+    #     'max_depth': [None],            # Use best from Iter 3
+    #     'min_samples_split': [2],       # Use best from Iter 3
+    #     'min_samples_leaf': [1]         # Use best from Iter 3
+    # }
 
     # OPTION 2: REFINED TUNING (moderate - narrow search around Iter 3 best)
     # Total: 12 models × 5 folds = 60 trainings (~20-40 minutes)
-    # Uncomment below and adjust based on your Iteration 3 results:
     # RF_PARAM_GRID = {
     #     'n_estimators': [100, 150, 200],    # Refine around best
     #     'max_depth': [None, 30],            # If 'None' was best, try nearby
@@ -182,15 +166,21 @@ elif CURRENT_ITERATION == 4:
     # OPTION 3: COMPREHENSIVE TUNING (exhaustive - final optimization)
     # Total: 144 models × 5 folds = 720 trainings (~3-6 hours)
     # Uncomment below for final, comprehensive search:
-    # RF_PARAM_GRID = {
-    #     'n_estimators': [100, 150, 200, 250],
-    #     'max_depth': [None, 20, 30, 40],
-    #     'min_samples_split': [2, 5, 8],
-    #     'min_samples_leaf': [1, 2, 3, 4]
-    # }
+    RF_PARAM_GRID = {
+        'n_estimators': [100, 150, 200, 250],
+        'max_depth': [None, 20, 30, 40],
+        'min_samples_split': [2, 5, 8],
+        'min_samples_leaf': [1, 2, 3, 4]
+    }
 
 else:
     raise ValueError(f"Invalid CURRENT_ITERATION: {CURRENT_ITERATION}. Must be 1-4.")
 
 # -- Submission --
 SUBMISSION_FILE = 'submission.csv'
+
+# -- Holdout Testing (for sanity checking leaderboard evaluation) --
+# Set to a list of patient IDs to exclude from training (e.g., ['R10'])
+# These patients will be held out completely for independent testing
+# Leave as None to use all training data
+EXCLUDE_PATIENTS_FOR_TESTING = None  # Example: ['R10'] to hold out R10

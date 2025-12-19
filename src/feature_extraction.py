@@ -1,6 +1,5 @@
 import numpy as np
-import scipy
-from scipy import signal
+from scipy import signal, stats
 
 
 def extract_time_domain_features(epoch):
@@ -27,8 +26,8 @@ def extract_time_domain_features(epoch):
         "min": np.min(epoch),
         "max": np.max(epoch),
         "range": np.max(epoch) - np.min(epoch),
-        "skewness": scipy.stats.skew(epoch),
-        "kurtosis": scipy.stats.kurtosis(epoch),
+        "skewness": stats.skew(epoch),
+        "kurtosis": stats.kurtosis(epoch),
         "zero_crossings": np.sum(np.diff(np.sign(epoch)) != 0),
         "hjorth_activity": np.var(epoch),
         "hjorth_mobility": np.sqrt(np.var(np.diff(epoch)) / np.var(epoch)),
@@ -342,6 +341,20 @@ def extract_multi_channel_features(multi_channel_data, config, channel_info=None
         print("  - 2 EOG channels × 11 features (SEM detection + REM burst patterns)")
         print("  - 1 EMG channel × 7 features (muscle tone + atonia markers)")
 
+    # Apply feature blacklist to remove domain-shifted features (Iteration 4+)
+    if config.CURRENT_ITERATION >= 4:
+        try:
+            from feature_blacklist import filter_blacklisted_features
+
+            features, feature_names, removed = filter_blacklisted_features(features, feature_names)
+            if removed:
+                print(f"\n⚠️  Domain adaptation: Removed {len(removed)} domain-shifted features:")
+                for feat in removed:
+                    print(f"    - {feat}")
+                print(f"  Remaining: {len(feature_names)} robust features")
+        except ImportError:
+            print("⚠️  feature_blacklist.py not found, using all features")
+
     return features, feature_names
 
 
@@ -461,14 +474,14 @@ def extract_eog_features(eog_signal, fs=50, include_frequency=False):
         "eog_peak_amplitude": peak_amplitude,
         "eog_variance": variance,
         "eog_rms": rms,
-        "eog_sem_score": sem_score,           # N1-specific slow eye movements
-        "eog_rem_score": rem_score,           # REM detection
+        "eog_sem_score": sem_score,
+        "eog_rem_score": rem_score,
         "eog_zero_crossings": zero_crossings,
         "eog_mean_abs_value": mean_abs_value,
-        "eog_sem_rem_ratio": sem_rem_ratio,   # N1 vs REM discriminator
-        "eog_burst_count": burst_count,       # REM-specific: number of bursts
-        "eog_burst_density": burst_density,   # REM-specific: proportion in bursts
-        "eog_mean_burst_duration": mean_burst_duration,  # REM-specific: avg burst length
+        "eog_sem_rem_ratio": sem_rem_ratio,
+        "eog_burst_count": burst_count,
+        "eog_burst_density": burst_density,
+        "eog_mean_burst_duration": mean_burst_duration,
     }
 
     return features
@@ -544,9 +557,9 @@ def extract_emg_features(emg_signal, fs=125):
         "emg_std": emg_std,
         "emg_mean_abs": emg_mean_abs,
         "emg_hf_ratio": hf_ratio,
-        "emg_percentile_10": emg_percentile_10,       # REM-specific: sustained low tone
-        "emg_min_ratio": emg_min_ratio,               # REM-specific: baseline tone measure
-        "emg_low_tone_proportion": emg_low_tone_proportion,  # REM-specific: temporal persistence
+        "emg_percentile_10": emg_percentile_10, 
+        "emg_min_ratio": emg_min_ratio,               
+        "emg_low_tone_proportion": emg_low_tone_proportion,  
     }
 
     return features

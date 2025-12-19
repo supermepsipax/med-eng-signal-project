@@ -11,8 +11,7 @@ from .xml_parser import (
 )
 
 from .preprocessing import (
-    preprocess,
-    lowpass_filter
+    preprocess
 )
 
 from .feature_extraction import (
@@ -31,8 +30,7 @@ from .classification import (
 from .metrics import (
     calculate_cohens_kappa,
     calculate_multiclass_roc_auc,
-    calculate_feature_importance,
-    get_kappa_interpretation
+    calculate_feature_importance
 )
 
 from .visualization import (
@@ -60,7 +58,6 @@ __all__ = [
     'create_epoch_labels',
     # preprocessing
     'preprocess',
-    'lowpass_filter',
     # feature_extraction
     'extract_features',
     'extract_time_domain_features',
@@ -72,7 +69,6 @@ __all__ = [
     'calculate_cohens_kappa',
     'calculate_multiclass_roc_auc',
     'calculate_feature_importance',
-    'get_kappa_interpretation',
     # visualization
     'visualize_results',
     'plot_roc_curves',

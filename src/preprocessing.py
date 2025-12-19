@@ -1,81 +1,6 @@
-from scipy.signal import butter, filtfilt, iirnotch
+from scipy.signal import butter, filtfilt
 import numpy as np
 
-def lowpass_filter(data, cutoff, fs, order=5):
-    """
-    Zero-phase low-pass Butterworth filter using filtfilt.
-
-    filtfilt applies the filter forward and backward, eliminating phase distortion
-    and providing better edge handling than lfilter. This is critical for
-    biomedical signals where waveform shape must be preserved.
-
-    Args:
-        data (np.ndarray): The input signal.
-        cutoff (float): The cutoff frequency of the filter.
-        fs (int): The sampling frequency of the signal.
-        order (int): The order of the filter.
-
-    Returns:
-        np.ndarray: The filtered signal with zero phase distortion.
-    """
-    nyquist = 0.5 * fs
-    normal_cutoff = cutoff / nyquist
-
-    # Ensure cutoff is below Nyquist frequency
-    if normal_cutoff >= 1.0:
-        raise ValueError(f"Cutoff frequency {cutoff} Hz must be less than Nyquist frequency {nyquist} Hz")
-
-    b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    y = filtfilt(b, a, data)
-    return y
-
-def highpass_filter(data, cutoff, fs, order=5):
-    """
-    Zero-phase high-pass Butterworth filter to remove DC drift and slow artifacts.
-
-    Useful for removing low-frequency noise and baseline drift in EEG signals.
-    Typical cutoff frequencies for EEG: 0.5-1 Hz
-
-    Args:
-        data (np.ndarray): The input signal.
-        cutoff (float): The cutoff frequency of the filter (Hz).
-        fs (int): The sampling frequency of the signal.
-        order (int): The order of the filter.
-
-    Returns:
-        np.ndarray: The filtered signal with zero phase distortion.
-    """
-    nyquist = 0.5 * fs
-    normal_cutoff = cutoff / nyquist
-
-    # Ensure cutoff is valid
-    if normal_cutoff >= 1.0:
-        raise ValueError(f"Cutoff frequency {cutoff} Hz must be less than Nyquist frequency {nyquist} Hz")
-
-    b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    y = filtfilt(b, a, data)
-    return y
-
-def notch_filter(data, center_freq, fs, Q=30):
-    """
-    Zero-phase notch filter to remove powerline interference at a specific frequency.
-
-    Commonly used to remove 50 Hz or 60 Hz powerline noise from EEG signals.
-    The Q factor determines the width of the notch (higher Q = narrower notch).
-
-    Args:
-        data (np.ndarray): The input signal.
-        center_freq (float): The center frequency to remove (Hz), typically 50 or 60.
-        fs (int): The sampling frequency of the signal.
-        Q (float): Quality factor. Higher values = narrower notch. Default is 30.
-
-    Returns:
-        np.ndarray: The filtered signal with zero phase distortion.
-    """
-    # Design notch filter
-    b, a = iirnotch(center_freq, Q, fs)
-    y = filtfilt(b, a, data)
-    return y
 
 def bandpass_filter(data, lowcut, highcut, fs, order=5):
     """
@@ -228,7 +153,7 @@ def preprocess_multi_channel(multi_channel_data, channel_info, config, record_id
             )
         preprocessed_data['emg'] = preprocessed_emg
 
-    # Print summary
+    # Print filtering summary
     if config.CURRENT_ITERATION >= 3:
         print(f"✓ Filtered EEG ({config.EEG_BANDPASS_FILTER_FREQ[0]}-{config.EEG_BANDPASS_FILTER_FREQ[1]} Hz), " +
               f"EOG ({config.EOG_BANDPASS_FILTER_FREQ[0]}-{config.EOG_BANDPASS_FILTER_FREQ[1]} Hz), " +
@@ -237,6 +162,15 @@ def preprocess_multi_channel(multi_channel_data, channel_info, config, record_id
         print(f"✓ Filtered EEG and EOG")
     else:
         print(f"✓ Filtered EEG")
+
+    # Apply per-epoch normalization for domain adaptation (Iteration 4+)
+    # This helps model generalize across datasets with different amplitudes
+    print("✓ Applying per-epoch z-score normalization (domain adaptation)")
+    preprocessed_data['eeg'] = normalize_per_epoch(preprocessed_data['eeg'])
+    if 'eog' in preprocessed_data:
+        preprocessed_data['eog'] = normalize_per_epoch(preprocessed_data['eog'])
+    if 'emg' in preprocessed_data:
+        preprocessed_data['emg'] = normalize_per_epoch(preprocessed_data['emg'])
 
     return preprocessed_data
 
@@ -304,3 +238,45 @@ def filter_epochs_multichannel(data, lowcut, highcut, fs):
             filtered_data[epoch, ch, :] = bandpass_filter(signal, lowcut, highcut, fs)
 
     return filtered_data
+
+
+def normalize_per_epoch(data):
+    """
+    Apply per-epoch z-score normalization to insulate against domain shift.
+
+    This normalizes each epoch independently to have mean=0 and std=1, which
+    helps the model generalize across datasets with different signal amplitudes
+    or recording conditions (domain adaptation).
+
+    Benefits:
+    - Eliminates absolute amplitude differences between datasets
+    - Makes features amplitude-invariant (focuses on shape, not scale)
+    - Improves robustness to different recording equipment or settings
+    - Particularly important when training and holdout data have different
+      signal characteristics (domain shift)
+
+    Args:
+        data (np.ndarray): Shape (n_epochs, n_channels, n_samples)
+
+    Returns:
+        np.ndarray: Normalized data with same shape, each epoch has mean≈0, std≈1
+    """
+    n_epochs, n_channels, samples_per_epoch = data.shape
+    normalized_data = np.zeros_like(data)
+
+    for epoch in range(n_epochs):
+        for ch in range(n_channels):
+            signal = data[epoch, ch, :]
+
+            # Compute mean and std for this epoch
+            mean = np.mean(signal)
+            std = np.std(signal)
+
+            # Avoid division by zero (if epoch has zero variance)
+            if std > 1e-10:
+                normalized_data[epoch, ch, :] = (signal - mean) / std
+            else:
+                # If zero variance, just center at zero
+                normalized_data[epoch, ch, :] = signal - mean
+
+    return normalized_data
