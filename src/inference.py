@@ -32,9 +32,9 @@ def make_inference(model, holdout_data, config):
         print(f"  Feature indices: {extreme_features[:10]}..." if len(extreme_features) > 10 else f"  Feature indices: {extreme_features}")
         print(f"  Max values: {max_per_feature[extreme_features[:5]]}")
 
-    # Apply scaler if model has one (SVM with StandardScaler)
+    # Apply scaler if model has one (SVM with RobustScaler)
     if hasattr(model, 'scaler'):
-        print("\nApplying StandardScaler to holdout data...")
+        print("\nApplying RobustScaler to holdout data...")
         print(f"  Scaler was trained with mean range: [{model.scaler.mean_.min():.2e}, {model.scaler.mean_.max():.2e}]")
         print(f"  Scaler was trained with scale range: [{model.scaler.scale_.min():.2e}, {model.scaler.scale_.max():.2e}]")
 

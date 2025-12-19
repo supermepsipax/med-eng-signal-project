@@ -28,9 +28,12 @@ def main():
 
     # 1. Load Data
     print("\n=== STEP 1: DATA LOADING ===")
+    if config.EXCLUDE_PATIENTS_FOR_TESTING:
+        print(f"⚠️  HOLDOUT MODE: Excluding {config.EXCLUDE_PATIENTS_FOR_TESTING} from training")
     multi_channel_data, labels, record_ids, channel_info = load_all_training_data(
         config.TRAINING_DIR,
-        epoch_length=30
+        epoch_length=30,
+        exclude_patients=config.EXCLUDE_PATIENTS_FOR_TESTING
     )
 
     print("\nLoaded multi-channel data:")
@@ -167,12 +170,16 @@ def main():
         visualize_results(metrics_dict, config)
         print("✓ Confusion matrix saved to: confusion_matrix.png")
 
-        # Generate advanced visualizations
-        visualize_advanced_metrics(metrics_dict, config)
+        # Generate advanced visualizations with selected feature names
+        selected_feature_names = None
+        if selector_info is not None and 'selected_feature_names' in selector_info:
+            selected_feature_names = selector_info['selected_feature_names']
+
+        visualize_advanced_metrics(metrics_dict, config, selected_feature_names)
         if metrics_dict.get('y_pred_proba') is not None:
             print("✓ ROC curves saved to: roc_curves_cv.png")
         if config.CURRENT_ITERATION >= 3:
-            print("  (Feature importance available in Iteration 3+ with Random Forest)")
+            print("✓ Feature importance plot saved to: feature_importance.png")
     else:
         print("Skipping visualization - no trained model")
 
